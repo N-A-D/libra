@@ -276,7 +276,7 @@ namespace va {
 				if (pos == last || m_val_cmp(*last, *pos)) {
 					if (pos == begin())
 						return std::rotate(pos, last, end());
-					iterator pos = std::prev(end());
+					iterator pos = std::prev(pos);
 					if (m_val_cmp(*prev, *last) || is_equal(key_of(*prev), key_of(*last)))
 						return std::rotate(pos, last, end());
 					else {

@@ -226,10 +226,7 @@ namespace va {
 					// But it limited the range of possible locations to [begin(), prev)
 					else {
 						auto lower = priv_lower_bound(begin(), prev, key_of(*last));
-						if (lower == last) {
-							return last;
-						}
-						else if (is_equal(key_of(*lower), key_of(*last))) {
+						if (is_equal(key_of(*lower), key_of(*last))) {
 							m_data.pop_back();
 							return lower;
 						}

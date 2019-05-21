@@ -113,6 +113,10 @@ namespace va {
 				return first;
 			}
 
+			bool iterator_in_range(const_iterator it) const {
+				return cbegin() <= it && it <= cend();
+			}
+
 		protected:
 
 			// ctor
@@ -199,6 +203,8 @@ namespace va {
 
 			template <class... Args>
 			iterator emplace_hint_unique(const_iterator hint, Args&& ...args) {
+				assert(iterator_in_range(hint));
+
 				ExtractKey key_of;
 				EquivalenceRelation is_equal;
 
@@ -261,6 +267,8 @@ namespace va {
 
 			template <class... Args>
 			iterator emplace_hint_common(const_iterator hint, Args&& ...args) {
+				assert(iterator_in_range(hint));
+
 				ExtractKey key_of;
 				EquivalenceRelation is_equal;
 

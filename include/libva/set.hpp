@@ -10,25 +10,34 @@ namespace va {
 		class Key,
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<Key>
-	> class set : detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>> {
-		using base_type = detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>>;
+	> class set 
+		: detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>> 
+	{
+		using base_type = detail::ordered_container
+							<
+								Key, 
+								Key, 
+								Compare, 
+								Allocator, 
+								detail::identity<Key>
+							>;
 	public:
 
-		using key_type               = typename base_type::key_type;
-		using value_type             = typename base_type::value_type;
-		using size_type              = typename base_type::size_type;
-		using difference_type        = typename base_type::difference_type;
-		using key_compare            = typename base_type::key_compare;
-		using value_compare          = typename base_type::value_compare;
-		using allocator_type         = typename base_type::allocator_type;
-		using reference              = typename base_type::reference;
-		using const_reference        = typename base_type::const_reference;
-		using pointer                = typename base_type::pointer;
-		using const_pointer          = typename base_type::const_pointer;
-		using iterator               = typename base_type::iterator;
-		using const_iterator         = typename base_type::const_iterator;
-		using reverse_iterator       = typename base_type::reverse_iterator;
-		using const_reverse_iterator = typename base_type::const_reverse_iterator;
+		using typename base_type::key_type;
+		using typename base_type::value_type;
+		using typename base_type::size_type;
+		using typename base_type::difference_type;
+		using typename base_type::key_compare;
+		using typename base_type::value_compare;
+		using typename base_type::allocator_type;
+		using typename base_type::reference;
+		using typename base_type::const_reference;
+		using typename base_type::pointer;
+		using typename base_type::const_pointer;
+		using typename base_type::iterator;
+		using typename base_type::const_iterator;
+		using typename base_type::reverse_iterator;
+		using typename base_type::const_reverse_iterator;
 
 		// ctors
 		set() = default;
@@ -150,9 +159,36 @@ namespace va {
 		class Key,
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<Key>
-	> class multiset {
+	> class multiset
+		: detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>>
+	{
+		using base_type = detail::ordered_container
+							<
+								Key,
+								Key,
+								Compare,
+								Allocator,
+								detail::identity<Key>
+							>;
+
 	public:
-	private:
+
+		using typename base_type::key_type;
+		using typename base_type::value_type;
+		using typename base_type::size_type;
+		using typename base_type::difference_type;
+		using typename base_type::key_compare;
+		using typename base_type::value_compare;
+		using typename base_type::allocator_type;
+		using typename base_type::reference;
+		using typename base_type::const_reference;
+		using typename base_type::pointer;
+		using typename base_type::const_pointer;
+		using typename base_type::iterator;
+		using typename base_type::const_iterator;
+		using typename base_type::reverse_iterator;
+		using typename base_type::const_reverse_iterator;
+
 	};
 
 }

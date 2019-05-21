@@ -1,9 +1,14 @@
-﻿# CMakeList.txt : Top-level CMake project file, do global configuration
-# and include sub-projects here.
-#
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required (VERSION 3.8)
 
-project ("libva")
+project (libva)
 
-# Include sub-projects.
-add_subdirectory ("libva")
+set(CXX_STANDARD 14)
+set(CXX_STANDARD_REQUIRED ON)
+
+add_library(${PROJECT_NAME} INTERFACE)
+
+option(PACKAGE_TESTS "Build the tests" ON)
+if (PACKAGE_TESTS)
+	enable_testing()
+	add_subdirectory(tests)
+endif()

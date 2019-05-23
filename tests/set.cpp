@@ -88,7 +88,7 @@ TEST(SetTests, AssignmentTests) {
 	ASSERT_TRUE(is_unique(s3.begin(), s3.end()));
 }
 
-TEST(SetTests, InsertionTest) {
+TEST(SetTests, InsertionTests) {
 	set_type set;
 
 	// Test insertion
@@ -198,4 +198,14 @@ TEST(SetTests, InsertionTest) {
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
 	ASSERT_TRUE(is_unique(set.begin(), set.end()));
+}
+
+TEST(SetTests, ErasureTests) {
+
+}
+
+TEST(SetTests, LexicographicalTests) {
+	set_type s1;
+	set_type s2;
+	ASSERT_TRUE(s1 == s2);
 }

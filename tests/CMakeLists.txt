@@ -23,3 +23,6 @@ macro(package_add_test TESTNAME)
 endmacro()
 
 package_add_test(set_tests set.cpp)
+package_add_test(multiset_tests multiset.cpp)
+package_add_test(map_tests map.cpp)
+package_add_test(multimap_tests multimap.cpp)

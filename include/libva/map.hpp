@@ -227,9 +227,9 @@ namespace va {
 			if (it != end())
 				return { it, false };
 			else
-				return { emplace(std::piecewise_construct,
+				return emplace(std::piecewise_construct,
 						std::forward_as_tuple(key),
-						std::forward_as_tuple(std::forward<Args>(args)...)), true };
+						std::forward_as_tuple(std::forward<Args>(args)...));
 		}
 
 		template <class... Args>
@@ -238,9 +238,9 @@ namespace va {
 			if (it != end())
 				return { it, false };
 			else
-				return { emplace(std::piecewise_construct,
+				return emplace(std::piecewise_construct,
 					std::forward_as_tuple(std::move(key)),
-					std::forward_as_tuple(std::forward<Args>(args)...)), true };
+					std::forward_as_tuple(std::forward<Args>(args)...));
 		}
 
 		template <class... Args>

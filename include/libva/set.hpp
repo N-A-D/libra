@@ -11,7 +11,7 @@ namespace va {
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<Key>
 	> class set 
-		: detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>> 
+		: detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>, false> 
 	{
 		using base_type = detail::ordered_container
 							<
@@ -19,7 +19,8 @@ namespace va {
 								Key, 
 								Compare, 
 								Allocator, 
-								detail::identity<Key>
+								detail::identity<Key>,
+								false
 							>;
 	public:
 
@@ -130,15 +131,8 @@ namespace va {
 
 		void insert(std::initializer_list<value_type> list) { insert(list.begin(), list.end()); }
 
-		template <class... Args> 
-		std::pair<iterator, bool> emplace(Args&&... args) { 
-			return base_type::emplace_unique(std::forward<Args>(args)...);
-		}
-
-		template <class... Args>
-		iterator emplace_hint(const_iterator hint, Args&&... args) {
-			return base_type::emplace_hint_unique(hint, std::forward<Args>(args)...);
-		}
+		using base_type::emplace;
+		using base_type::emplace_hint;
 
 		using base_type::erase;
 
@@ -160,7 +154,7 @@ namespace va {
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<Key>
 	> class multiset
-		: detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>>
+		: detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>, true>
 	{
 		using base_type = detail::ordered_container
 							<
@@ -168,7 +162,8 @@ namespace va {
 								Key,
 								Compare,
 								Allocator,
-								detail::identity<Key>
+								detail::identity<Key>,
+								true
 							>;
 
 	public:

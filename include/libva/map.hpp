@@ -12,7 +12,7 @@ namespace va {
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<std::pair<Key, Value>>
 	> class map 
-		: detail::ordered_container<Key, Value, Compare, Allocator, detail::select1st<std::pair<Key, Value>>> 
+		: detail::ordered_container<Key, Value, Compare, Allocator, detail::select1st<std::pair<Key, Value>>, false> 
 	{
 		using base_type = detail::ordered_container
 							<
@@ -20,7 +20,8 @@ namespace va {
 								Value, 
 								Compare, 
 								Allocator, 
-								detail::select1st<std::pair<Key, Value>>
+								detail::select1st<std::pair<Key, Value>>,
+								false
 							>;
 	public:
 		
@@ -48,7 +49,7 @@ namespace va {
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<std::pair<Key, Value>>
 	> class multimap
-		: detail::ordered_container<Key, Value, Compare, Allocator, detail::select1st<std::pair<Key, Value>>>
+		: detail::ordered_container<Key, Value, Compare, Allocator, detail::select1st<std::pair<Key, Value>>, true>
 	{
 		using base_type = detail::ordered_container
 							<
@@ -56,7 +57,8 @@ namespace va {
 								Value,
 								Compare,
 								Allocator,
-								detail::select1st<std::pair<Key, Value>>
+								detail::select1st<std::pair<Key, Value>>,
+								true
 							>;
 	public:
 

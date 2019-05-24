@@ -1,4 +1,4 @@
 #include <gtest/gtest.h>
-#include "../include/libva/map.hpp"
+#include "../include/libva/ordered_multimap.hpp"
 
-using multimap_type = va::multimap<int, int>;
+using multimap_type = va::ordered_multimap<int, int>;

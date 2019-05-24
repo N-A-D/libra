@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "../include/libva/set.hpp"
+#include "../include/libva/ordered_set.hpp"
 #include "utility.hpp"
 
-using set_type = va::set<int>;
+using set_type = va::ordered_set<int>;
 
 TEST(SetTests, ConstructorTests) {
 	set_type s1;
@@ -201,6 +201,10 @@ TEST(SetTests, InsertionTests) {
 }
 
 TEST(SetTests, ErasureTests) {
+
+}
+
+TEST(SetTests, LookupTests) {
 
 }
 

@@ -13,12 +13,12 @@ namespace va {
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<std::pair<Key, Value>>
 	> class ordered_multimap
-		: public detail::ordered_container<Key, Value, Compare, Allocator, detail::select1st<std::pair<Key, Value>>>
+	: public detail::ordered_container<Key, std::pair<Key, Value>, Compare, Allocator, detail::select1st<std::pair<Key, Value>>>
 	{
 		using base_type = detail::ordered_container
 							<
 								Key,
-								Value,
+								std::pair<Key, Value>,
 								Compare,
 								Allocator,
 								detail::select1st<std::pair<Key, Value>>

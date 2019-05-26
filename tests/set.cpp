@@ -4,7 +4,7 @@
 
 using set_type = va::ordered_set<int>;
 
-TEST(SetTests, ConstructorTests) {
+TEST(OrderedSetTests, ConstructorTests) {
 	set_type s1;
 	ASSERT_TRUE(s1.empty());
 
@@ -59,7 +59,7 @@ TEST(SetTests, ConstructorTests) {
 
 }
 
-TEST(SetTests, AssignmentTests) {
+TEST(OrderedSetTests, AssignmentTests) {
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
 		integers.emplace_back(i);
@@ -88,7 +88,7 @@ TEST(SetTests, AssignmentTests) {
 	ASSERT_TRUE(is_unique(s3.begin(), s3.end()));
 }
 
-TEST(SetTests, InsertionTests) {
+TEST(OrderedSetTests, InsertionTests) {
 	set_type set;
 
 	// Test insertion
@@ -145,7 +145,7 @@ TEST(SetTests, InsertionTests) {
 	set.clear();
 
 	
-	// Setup random integers
+	// OrderedSetup random integers
 	std::srand(std::time(nullptr));
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
@@ -200,16 +200,44 @@ TEST(SetTests, InsertionTests) {
 	ASSERT_TRUE(is_unique(set.begin(), set.end()));
 }
 
-TEST(SetTests, ErasureTests) {
-
+TEST(OrderedSetTests, ErasureTests) {
+	set_type set;
+	std::vector<int> integers;
+	for (int i = 0; i < N; ++i) {
+		integers.emplace_back(i);
+		set.insert(set.end(), i);
+	}
+	set.insert(integers.begin(), integers.end());
+	for (auto integer : integers) {
+		ASSERT_EQ(1, set.erase(integer));
+	}
+	ASSERT_TRUE(set.empty());
+	std::shuffle(integers.begin(), integers.end(), gen);
+	set.insert(integers.begin(), integers.end());
+	for (auto integer : integers) {
+		auto it = set.find(integer);
+		set.erase(it);
+		ASSERT_FALSE(set.contains(integer));
+	}
 }
 
-TEST(SetTests, LookupTests) {
-
+TEST(OrderedSetTests, LookupTests) {
+	std::vector<int> integers;
+	set_type set;
+	for (int i = 1; i <= N; ++i) {
+		integers.emplace_back(i);
+		set.insert(set.end(), i);
+	}
+	std::shuffle(integers.begin(), integers.end(), gen);
+	for (auto integer : integers) {
+		ASSERT_FALSE(set.contains(-integer));
+		ASSERT_EQ(0, set.count(-integer));
+		ASSERT_TRUE(set.contains(integer)); // Tests find which tests lower_bound
+		ASSERT_EQ(1, set.count(integer)); // Tests equal_range which tests lower_bound and upper_bound
+	}
 }
 
-TEST(SetTests, LexicographicalTests) {
-	set_type s1;
-	set_type s2;
-	ASSERT_TRUE(s1 == s2);
+TEST(OrderedSetTests, LexicographicalTests) {
+	ASSERT_EQ(set_type({ 1, 2, 3, 4 }), set_type({ 1, 2, 3, 4 }));
+	ASSERT_LE(set_type({ 1, 2, 3, 4 }), set_type({ 2, 3, 4, 5 }));
 }

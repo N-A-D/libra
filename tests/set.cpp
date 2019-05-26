@@ -1,10 +1,16 @@
 #include <gtest/gtest.h>
 #include "../include/libva/ordered_set.hpp"
-#include "utility.hpp"
+#include <random>
+#include <vector>
+#include <algorithm>
+#include "detail/constants.hpp"
 
 using set_type = va::ordered_set<int>;
 
 TEST(OrderedSetTests, ConstructorTests) {
+
+	std::mt19937 gen { std::random_device{}() };
+
 	set_type s1;
 	ASSERT_TRUE(s1.empty());
 
@@ -18,14 +24,14 @@ TEST(OrderedSetTests, ConstructorTests) {
 	set_type s2(integers.begin(), integers.end());
 	ASSERT_EQ(s2.size(), integers.size());
 	ASSERT_TRUE(std::is_sorted(s2.begin(), s2.end()));
-	ASSERT_TRUE(is_unique(s2.begin(), s2.end()));
+	ASSERT_TRUE(std::unique(s2.begin(), s2.end()) == s2.end());
 
 	// Tests construction from initializer list
 	std::initializer_list<int> list{ 10, 5, 9, 4, 8, 3, 7, 2, 1, 6, 0, 22, 11 };
 	set_type s3(list);
 	ASSERT_EQ(list.size(), s3.size());
 	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
-	ASSERT_TRUE(is_unique(s3.begin(), s3.end()));
+	ASSERT_TRUE(std::unique(s3.begin(), s3.end()) == s3.end());
 
 	// Test construction from external container with duplicates
 	size_t size = integers.size();
@@ -36,30 +42,33 @@ TEST(OrderedSetTests, ConstructorTests) {
 	set_type s4(integers.begin(), integers.end());
 	ASSERT_EQ(size, s4.size());
 	ASSERT_TRUE(std::is_sorted(s4.begin(), s4.end()));
-	ASSERT_TRUE(is_unique(s4.begin(), s4.end()));
+	ASSERT_TRUE(std::unique(s4.begin(), s4.end()) == s4.end());
 	
 	// Test construction from initializer list with duplicates
 	std::initializer_list<int> list2{ 10, 5, 9, 4, 8, 3, 7, 2, 1, 6, 0, 22, 11, 10, 5, 9, 4, 8, 3, 7, 2, 1, 6, 0, 22, 11 };
 	set_type s5(list2);
 	ASSERT_EQ(list.size(), s5.size());
 	ASSERT_TRUE(std::is_sorted(s5.begin(), s5.end()));
-	ASSERT_TRUE(is_unique(s5.begin(), s5.end()));
+	ASSERT_TRUE(std::unique(s5.begin(), s5.end()) == s5.end());
 
 	// Test copy construction
 	set_type copier(s2);
 	ASSERT_EQ(s2.size(), copier.size());
 	ASSERT_TRUE(std::is_sorted(copier.begin(), copier.end()));
-	ASSERT_TRUE(is_unique(copier.begin(), copier.end()));
+	ASSERT_TRUE(std::unique(copier.begin(), copier.end()) == copier.end());
 
 	// Test move construction
 	set_type thief(std::move(copier));
 	ASSERT_TRUE(copier.empty());
 	ASSERT_TRUE(std::is_sorted(thief.begin(), thief.end()));
-	ASSERT_TRUE(is_unique(thief.begin(), thief.end()));
+	ASSERT_TRUE(std::unique(thief.begin(), thief.end()) == thief.end());
 
 }
 
 TEST(OrderedSetTests, AssignmentTests) {
+
+	std::mt19937 gen{ std::random_device{}() };
+
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
 		integers.emplace_back(i);
@@ -71,24 +80,27 @@ TEST(OrderedSetTests, AssignmentTests) {
 	set_type s2 = s1;
 	ASSERT_EQ(s1.size(), s2.size());
 	ASSERT_TRUE(std::is_sorted(s2.begin(), s2.end()));
-	ASSERT_TRUE(is_unique(s2.begin(), s2.end()));
+	ASSERT_TRUE(std::unique(s2.begin(), s2.end()) == s2.end());
 
 	// Test move assignment
 	set_type s3 = std::move(s2);
 	ASSERT_TRUE(s2.empty());
 	ASSERT_EQ(s1.size(), s3.size());
 	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
-	ASSERT_TRUE(is_unique(s3.begin(), s3.end()));
+	ASSERT_TRUE(std::unique(s3.begin(), s3.end()) == s3.end());
 
 	// Test initializer_list assignment
 	std::initializer_list<int> list{ 4,7,2,1,6,5,3 };
 	s3 = list;
 	ASSERT_EQ(list.size(), s3.size());
 	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
-	ASSERT_TRUE(is_unique(s3.begin(), s3.end()));
+	ASSERT_TRUE(std::unique(s3.begin(), s3.end()) == s3.end());
 }
 
 TEST(OrderedSetTests, InsertionTests) {
+
+	std::mt19937 gen{ std::random_device{}() };
+
 	set_type set;
 
 	// Test insertion
@@ -98,6 +110,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 
@@ -109,6 +122,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 
@@ -120,6 +134,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 
@@ -131,6 +146,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 
@@ -141,11 +157,12 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 
 	
-	// OrderedSetup random integers
+	// Setup random integers
 	std::srand(std::time(nullptr));
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
@@ -160,6 +177,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 	
@@ -171,6 +189,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 
 	set.clear();
 	
@@ -185,7 +204,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(is_unique(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 	
 	set.clear();
 
@@ -197,10 +216,11 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(is_unique(set.begin(), set.end()));
+	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
 }
 
 TEST(OrderedSetTests, ErasureTests) {
+	std::mt19937 gen{ std::random_device{}() };
 	set_type set;
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
@@ -222,6 +242,7 @@ TEST(OrderedSetTests, ErasureTests) {
 }
 
 TEST(OrderedSetTests, LookupTests) {
+	std::mt19937 gen{ std::random_device{}() };
 	std::vector<int> integers;
 	set_type set;
 	for (int i = 1; i <= N; ++i) {

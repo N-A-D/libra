@@ -291,7 +291,8 @@ namespace va {
 			size_type erase(const Key& key) {
 				auto range = equal_range(key);
 				auto count = range.second - range.first;
-				erase(range.first, range.second);
+				if (count > 0)
+					erase(range.first, range.second);
 				return count;
 			}
 

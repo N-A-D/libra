@@ -296,6 +296,12 @@ namespace va {
 				return count;
 			}
 
+			void swap(ordered_container& other) {
+				m_data.swap(other.m_data);
+				std::swap(m_key_cmp, other.m_key_cmp);
+				std::swap(m_val_cmp, other.m_val_cmp);
+			}
+
 			// lookup
 			size_type count(const Key& key) const {
 				auto range = equal_range(key);

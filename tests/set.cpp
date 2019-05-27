@@ -7,10 +7,9 @@
 
 using set_type = va::ordered_set<int>;
 
+std::mt19937 gen{ std::random_device{}() };
+
 TEST(OrderedSetTests, ConstructorTests) {
-
-	std::mt19937 gen { std::random_device{}() };
-
 	set_type s1;
 	ASSERT_TRUE(s1.empty());
 
@@ -66,9 +65,6 @@ TEST(OrderedSetTests, ConstructorTests) {
 }
 
 TEST(OrderedSetTests, AssignmentTests) {
-
-	std::mt19937 gen{ std::random_device{}() };
-
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
 		integers.emplace_back(i);
@@ -98,9 +94,6 @@ TEST(OrderedSetTests, AssignmentTests) {
 }
 
 TEST(OrderedSetTests, InsertionTests) {
-
-	std::mt19937 gen{ std::random_device{}() };
-
 	set_type set;
 
 	// Test insertion
@@ -220,7 +213,6 @@ TEST(OrderedSetTests, InsertionTests) {
 }
 
 TEST(OrderedSetTests, ErasureTests) {
-	std::mt19937 gen{ std::random_device{}() };
 	set_type set;
 	std::vector<int> integers;
 	for (int i = 0; i < N; ++i) {
@@ -242,7 +234,6 @@ TEST(OrderedSetTests, ErasureTests) {
 }
 
 TEST(OrderedSetTests, LookupTests) {
-	std::mt19937 gen{ std::random_device{}() };
 	std::vector<int> integers;
 	set_type set;
 	for (int i = 1; i <= N; ++i) {
@@ -261,4 +252,12 @@ TEST(OrderedSetTests, LookupTests) {
 TEST(OrderedSetTests, LexicographicalTests) {
 	ASSERT_EQ(set_type({ 1, 2, 3, 4 }), set_type({ 1, 2, 3, 4 }));
 	ASSERT_LE(set_type({ 1, 2, 3, 4 }), set_type({ 2, 3, 4, 5 }));
+}
+
+TEST(OrderedSetTests, SwapTest) {
+	set_type s1({1, 2, 3, 4 });
+	set_type s2({5, 6, 7, 8});
+	s1.swap(s2);
+	ASSERT_EQ(set_type({ 5, 6, 7, 8 }), s1);
+	ASSERT_EQ(set_type({ 1, 2, 3, 4 }), s2);
 }

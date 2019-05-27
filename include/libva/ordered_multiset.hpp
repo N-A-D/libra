@@ -143,6 +143,8 @@ namespace va {
 
 		using base_type::erase;
 
+		using base_type::swap;
+
 		// lookup
 		using base_type::count;
 		using base_type::find;

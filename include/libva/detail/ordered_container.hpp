@@ -249,6 +249,8 @@ namespace va {
 				ExtractKey key_of;
 				m_data.emplace_back(std::forward<Args>(args)...);
 				auto upper = upper_bound(key_of(m_data.back()));
+				if (upper == end())
+					return std::prev(end());
 				return std::rotate(upper, std::prev(end()), end());
 			}
 
@@ -268,7 +270,7 @@ namespace va {
 				if (pos == last || m_val_cmp(*last, *pos)) {
 					if (pos == begin())
 						return std::rotate(pos, last, end());
-					iterator pos = std::prev(pos);
+					iterator prev = std::prev(pos);
 					if (m_val_cmp(*prev, *last) || is_equal(key_of(*prev), key_of(*last)))
 						return std::rotate(pos, last, end());
 					else {
@@ -278,6 +280,8 @@ namespace va {
 				}
 				else {
 					auto upper = priv_upper_bound(pos, end(), key_of(*last));
+					if (upper == end())
+						return last;
 					return std::rotate(upper, last, end());
 				}
 			}

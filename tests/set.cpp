@@ -13,24 +13,17 @@ TEST(OrderedSetTests, ConstructorTests) {
 	set_type s1;
 	ASSERT_TRUE(s1.empty());
 
-	std::vector<int> integers;
-	for (int i = 0; i < N; ++i) {
-		integers.emplace_back(i);
-	}
+	std::vector<int> integers(N);
+	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
 	std::shuffle(integers.begin(), integers.end(), gen);
 
 	// Tests construction from an external container
+	// Tests initializer list constructors since those forward to this one.
 	set_type s2(integers.begin(), integers.end());
-	ASSERT_EQ(s2.size(), integers.size());
+	ASSERT_EQ(N, s2.size());
 	ASSERT_TRUE(std::is_sorted(s2.begin(), s2.end()));
 	ASSERT_TRUE(std::unique(s2.begin(), s2.end()) == s2.end());
 
-	// Tests construction from initializer list
-	std::initializer_list<int> list{ 10, 5, 9, 4, 8, 3, 7, 2, 1, 6, 0, 22, 11 };
-	set_type s3(list);
-	ASSERT_EQ(list.size(), s3.size());
-	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
-	ASSERT_TRUE(std::unique(s3.begin(), s3.end()) == s3.end());
 
 	// Test construction from external container with duplicates
 	size_t size = integers.size();
@@ -38,59 +31,51 @@ TEST(OrderedSetTests, ConstructorTests) {
 		integers.emplace_back(static_cast<int>(i));
 	}
 	std::shuffle(integers.begin(), integers.end(), gen);
-	set_type s4(integers.begin(), integers.end());
-	ASSERT_EQ(size, s4.size());
-	ASSERT_TRUE(std::is_sorted(s4.begin(), s4.end()));
-	ASSERT_TRUE(std::unique(s4.begin(), s4.end()) == s4.end());
+	set_type s3(integers.begin(), integers.end());
+	ASSERT_EQ(N, s3.size());
+	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
+	ASSERT_EQ(std::unique(s3.begin(), s3.end()), s3.end());
 	
-	// Test construction from initializer list with duplicates
-	std::initializer_list<int> list2{ 10, 5, 9, 4, 8, 3, 7, 2, 1, 6, 0, 22, 11, 10, 5, 9, 4, 8, 3, 7, 2, 1, 6, 0, 22, 11 };
-	set_type s5(list2);
-	ASSERT_EQ(list.size(), s5.size());
-	ASSERT_TRUE(std::is_sorted(s5.begin(), s5.end()));
-	ASSERT_TRUE(std::unique(s5.begin(), s5.end()) == s5.end());
-
 	// Test copy construction
 	set_type copier(s2);
-	ASSERT_EQ(s2.size(), copier.size());
+	ASSERT_EQ(N, copier.size());
 	ASSERT_TRUE(std::is_sorted(copier.begin(), copier.end()));
-	ASSERT_TRUE(std::unique(copier.begin(), copier.end()) == copier.end());
+	ASSERT_EQ(std::unique(copier.begin(), copier.end()), copier.end());
 
 	// Test move construction
 	set_type thief(std::move(copier));
 	ASSERT_TRUE(copier.empty());
 	ASSERT_TRUE(std::is_sorted(thief.begin(), thief.end()));
-	ASSERT_TRUE(std::unique(thief.begin(), thief.end()) == thief.end());
+	ASSERT_EQ(std::unique(thief.begin(), thief.end()), thief.end());
 
 }
 
 TEST(OrderedSetTests, AssignmentTests) {
-	std::vector<int> integers;
-	for (int i = 0; i < N; ++i) {
-		integers.emplace_back(i);
-	}
+	std::vector<int> integers(N);
+	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
 	std::shuffle(integers.begin(), integers.end(), gen);
 
 	// Test copy assignment
 	set_type s1(integers.begin(), integers.end());
 	set_type s2 = s1;
+	ASSERT_EQ(N, s1.size());
 	ASSERT_EQ(s1.size(), s2.size());
 	ASSERT_TRUE(std::is_sorted(s2.begin(), s2.end()));
-	ASSERT_TRUE(std::unique(s2.begin(), s2.end()) == s2.end());
+	ASSERT_EQ(std::unique(s2.begin(), s2.end()), s2.end());
 
 	// Test move assignment
 	set_type s3 = std::move(s2);
 	ASSERT_TRUE(s2.empty());
 	ASSERT_EQ(s1.size(), s3.size());
 	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
-	ASSERT_TRUE(std::unique(s3.begin(), s3.end()) == s3.end());
+	ASSERT_EQ(std::unique(s3.begin(), s3.end()), s3.end());
 
 	// Test initializer_list assignment
 	std::initializer_list<int> list{ 4,7,2,1,6,5,3 };
 	s3 = list;
 	ASSERT_EQ(list.size(), s3.size());
 	ASSERT_TRUE(std::is_sorted(s3.begin(), s3.end()));
-	ASSERT_TRUE(std::unique(s3.begin(), s3.end()) == s3.end());
+	ASSERT_EQ(std::unique(s3.begin(), s3.end()), s3.end());
 }
 
 TEST(OrderedSetTests, InsertionTests) {
@@ -103,7 +88,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 
@@ -115,7 +100,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 
@@ -127,7 +112,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 
@@ -139,7 +124,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 
@@ -150,17 +135,15 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 
 	
 	// Setup random integers
 	std::srand(std::time(nullptr));
-	std::vector<int> integers;
-	for (int i = 0; i < N; ++i) {
-		integers.emplace_back(i);
-	}
+	std::vector<int> integers(N);
+	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
 	std::shuffle(integers.begin(), integers.end(), gen);
 
 	// Test random integer insertion
@@ -170,7 +153,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 	
@@ -182,7 +165,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 
 	set.clear();
 	
@@ -197,7 +180,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 	
 	set.clear();
 
@@ -209,7 +192,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
-	ASSERT_TRUE(std::unique(set.begin(), set.end()) == set.end());
+	ASSERT_EQ(std::unique(set.begin(), set.end()), set.end());
 }
 
 TEST(OrderedSetTests, ErasureTests) {
@@ -219,7 +202,6 @@ TEST(OrderedSetTests, ErasureTests) {
 		integers.emplace_back(i);
 		set.insert(set.end(), i);
 	}
-	set.insert(integers.begin(), integers.end());
 	for (auto integer : integers) {
 		ASSERT_EQ(1, set.erase(integer));
 	}

@@ -190,7 +190,7 @@ namespace va {
 
 			template <class... Args>
 			iterator emplace_hint_unique(const_iterator hint, Args&& ...args) {
-				assert(iterator_in_range(hint));
+				assert(iterator_in_range(hint) && "Iterator out of range!");
 
 				ExtractKey key_of;
 				EquivalenceRelation is_equal;
@@ -201,46 +201,34 @@ namespace va {
 				iterator pos = begin() + step;
 				iterator last = std::prev(end());
 
-				// New element belongs somewhere in the range [begin(), pos)
 				if (pos == last || m_val_cmp(*last, *pos)) {
-					// Empty container or new element is the smallest
-					if (pos == begin())
+					if (pos == begin() || m_val_cmp(*std::prev(pos), *last))
 						return std::rotate(pos, last, end());
 					iterator prev = std::prev(pos);
-					// Pos is the correct position for the new element
-					if (m_val_cmp(*prev, *last))
-						return std::rotate(pos, last, end());
-					// The element has an equivalent and must be removed
-					else if (is_equal(key_of(*prev), key_of(*last))) {
+					if (is_equal(key_of(*prev), key_of(*last))) {
 						m_data.pop_back();
 						return prev;
 					}
-					// Hint wasn't particularly useful...
-					// But it limited the range of possible locations to [begin(), prev)
 					else {
 						auto lower = priv_lower_bound(begin(), prev, key_of(*last));
 						if (is_equal(key_of(*lower), key_of(*last))) {
 							m_data.pop_back();
 							return lower;
 						}
-						else {
+						else
 							return std::rotate(lower, last, end());
-						}
 					}
 				}
-				// New element belongs somewhere in the range [pos, end())
 				else {
 					auto lower = priv_lower_bound(pos, end(), key_of(*last));
-					if (lower == last) {
+					if (lower == last) 
 						return lower;
-					}
 					else if (is_equal(key_of(*lower), key_of(*last))) {
 						m_data.pop_back();
 						return lower;
 					}
-					else {
+					else
 						return std::rotate(lower, last, end());
-					}
 				}
 			}
 
@@ -256,7 +244,7 @@ namespace va {
 
 			template <class... Args>
 			iterator emplace_hint_common(const_iterator hint, Args&& ...args) {
-				assert(iterator_in_range(hint));
+				assert(iterator_in_range(hint) && "Iterator out of range!");
 
 				ExtractKey key_of;
 				EquivalenceRelation is_equal;
@@ -268,15 +256,10 @@ namespace va {
 				iterator last = std::prev(end());
 
 				if (pos == last || m_val_cmp(*last, *pos)) {
-					if (pos == begin())
+					if (pos == begin() || m_val_cmp(*std::prev(pos), *last) || is_equal(key_of(*std::prev(pos)), key_of(*last)))
 						return std::rotate(pos, last, end());
-					iterator prev = std::prev(pos);
-					if (m_val_cmp(*prev, *last) || is_equal(key_of(*prev), key_of(*last)))
-						return std::rotate(pos, last, end());
-					else {
-						auto upper = priv_upper_bound(begin(), prev, key_of(*last));
-						return std::rotate(upper, last, end());
-					}
+					else
+						return std::rotate(priv_upper_bound(begin(), std::prev(pos), key_of(*last)), last, end());
 				}
 				else {
 					auto upper = priv_upper_bound(pos, end(), key_of(*last));

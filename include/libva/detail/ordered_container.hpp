@@ -359,49 +359,31 @@ namespace va {
 
 
 			// non-member operators
-			template <class K, class V, class Compare, class Alloc, class ExtKey>
-			friend bool operator==(const ordered_container<K, V, Compare, Alloc, ExtKey>& lhs,
-				const ordered_container<K, V, Compare, Alloc, ExtKey>& rhs)
-			{
+			friend bool operator==(const ordered_container& lhs, const ordered_container& rhs) {
 				auto comp = lhs.value_comp();
-				auto is_equal = [&comp](const V& left, const V& right) {
+				auto is_equal = [&comp](const value_type& left, const value_type& right) {
 					return !comp(left, right) && !comp(right, left);
 				};
 				return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), is_equal);
 			}
 
-			template <class K, class V, class Compare, class Alloc, class ExtKey>
-			friend bool operator!=(const ordered_container<K, V, Compare, Alloc, ExtKey>& lhs,
-				const ordered_container<K, V, Compare, Alloc, ExtKey>& rhs)
-			{
+			friend bool operator!=(const ordered_container& lhs, const ordered_container& rhs) {
 				return !(lhs == rhs);
 			}
 
-			template <class K, class V, class Compare, class Alloc, class ExtKey>
-			friend bool operator<(const ordered_container<K, V, Compare, Alloc, ExtKey>& lhs,
-				const ordered_container<K, V, Compare, Alloc, ExtKey>& rhs)
-			{
+			friend bool operator<(const ordered_container& lhs, const ordered_container& rhs) {
 				return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), lhs.value_comp());
 			}
 
-			template <class K, class V, class Compare, class Alloc, class ExtKey>
-			friend bool operator<=(const ordered_container<K, V, Compare, Alloc, ExtKey>& lhs,
-				const ordered_container<K, V, Compare, Alloc, ExtKey>& rhs)
-			{
+			friend bool operator<=(const ordered_container& lhs, const ordered_container& rhs) {
 				return lhs < rhs || lhs == rhs;
 			}
 
-			template <class K, class V, class Compare, class Alloc, class ExtKey>
-			friend bool operator>(const ordered_container<K, V, Compare, Alloc, ExtKey>& lhs,
-				const ordered_container<K, V, Compare, Alloc, ExtKey>& rhs)
-			{
+			friend bool operator>(const ordered_container& lhs, const ordered_container& rhs) {
 				return rhs < lhs;
 			}
 
-			template <class K, class V, class Compare, class Alloc, class ExtKey>
-			friend bool operator>=(const ordered_container<K, V, Compare, Alloc, ExtKey>& lhs,
-				const ordered_container<K, V, Compare, Alloc, ExtKey>& rhs)
-			{
+			friend bool operator>=(const ordered_container& lhs, const ordered_container& rhs) {
 				return lhs > rhs || lhs == rhs;
 			}
 		};

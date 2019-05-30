@@ -115,7 +115,7 @@ namespace va {
 
 		mapped_type& operator[](const key_type& key) {
 			auto it = find(key);
-			if (it != end)
+			if (it != end())
 				return it->second;
 			else
 				return this->try_emplace(key).first->second;
@@ -123,7 +123,7 @@ namespace va {
 
 		mapped_type& operator[](key_type&& key) {
 			auto it = find(key);
-			if (it != end)
+			if (it != end())
 				return it->second;
 			else
 				return this->try_emplace(std::move(key)).first->second;
@@ -189,22 +189,22 @@ namespace va {
 		}
 
 		template <class M>
-		std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& k, M&& obj) {
+		iterator insert_or_assign(const_iterator hint, const key_type& k, M&& obj) {
 			auto it = find(k);
 			if (it != end()) {
 				it->second = std::forward<M>(obj);
-				return { it, false };
+				return it;
 			}
 			else
 				return emplace_hint(hint, k, std::forward<M>(obj));
 		}
 
 		template <class M>
-		std::pair<iterator, bool> insert_or_assign(const_iterator hint, key_type&& k, M&& obj) {
+		iterator insert_or_assign(const_iterator hint, key_type&& k, M&& obj) {
 			auto it = find(k);
 			if (it != end()) {
 				it->second = std::forward<M>(obj);
-				return { it, false };
+				return it;
 			}
 			else
 				return emplace_hint(hint, std::move(k), std::forward<M>(obj));

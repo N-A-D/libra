@@ -189,7 +189,7 @@ TEST(OrderedMapTests, InsertionTests) {
 
 	map.clear();
 
-	// Duplicate value mapup
+	// Duplicate value setup
 	auto copy = integers;
 	std::copy(copy.begin(), copy.end(), std::back_inserter(integers));
 	std::shuffle(integers.begin(), integers.end(), gen);
@@ -214,6 +214,91 @@ TEST(OrderedMapTests, InsertionTests) {
 	ASSERT_EQ(N, map.size());
 	ASSERT_TRUE(std::is_sorted(map.begin(), map.end()));
 	ASSERT_EQ(std::unique(map.begin(), map.end()), map.end());
+}
+
+TEST(OrderedMapTests, ElementAccess) {
+	std::vector<int> integers;
+	va::ordered_map<int, bool> map;
+	for (int i = 0; i < N; ++i) {
+		map.emplace(std::make_pair(i, true));
+		integers.emplace_back(i);
+	}
+	std::shuffle(integers.begin(), integers.end(), gen);
+	for (auto integer : integers) {
+		ASSERT_TRUE(map.at(integer));
+	}
+}
+
+TEST(OrderedMapTests, TryEmplace) {
+	std::vector<int> integers(N);
+	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
+	map_type map;
+	for (auto integer : integers) {
+		map.try_emplace(integer, false);
+		ASSERT_FALSE(map.at(integer));
+	}
+	for (auto integer : integers) {
+		map.try_emplace(integer, true);
+		ASSERT_FALSE(map.at(integer)); // The elements remain false
+	}
+	map.clear();
+
+	// Try emplace with hints
+
+	std::shuffle(integers.begin(), integers.end(), gen);
+	std::srand(std::time(nullptr));
+
+	// Random hint
+	auto it = map.begin();
+	for (auto integer : integers) {
+		map.try_emplace(it, integer, true);
+		ASSERT_TRUE(map.at(integer));
+		it = map.begin() + std::rand() % map.size();
+	}
+
+	it = map.begin();
+	std::shuffle(integers.begin(), integers.end(), gen);
+	for (auto integer : integers) {
+		map.try_emplace(it, integer, false);
+		ASSERT_TRUE(map.at(integer));
+		it = map.begin() + std::rand() % map.size();
+	}
+}
+
+TEST(OrderedMapTests, InsertOrAssignTests) {
+	std::vector<int> integers(N);
+	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
+	map_type map;
+	for (auto integer : integers) {
+		map.insert_or_assign(integer, false);
+		ASSERT_FALSE(map.at(integer));
+	}
+	for (auto integer : integers) {
+		map.insert_or_assign(integer, true);
+		ASSERT_TRUE(map.at(integer)); // The elements remain false
+	}
+	map.clear();
+
+	// Try emplace with hints
+
+	std::shuffle(integers.begin(), integers.end(), gen);
+	std::srand(std::time(nullptr));
+
+	// Random hint
+	auto it = map.begin();
+	for (auto integer : integers) {
+		map.insert_or_assign(it, integer, true);
+		ASSERT_TRUE(map.at(integer));
+		it = map.begin() + std::rand() % map.size();
+	}
+
+	it = map.begin();
+	std::shuffle(integers.begin(), integers.end(), gen);
+	for (auto integer : integers) {
+		map.insert_or_assign(it, integer, false);
+		ASSERT_FALSE(map.at(integer));
+		it = map.begin() + std::rand() % map.size();
+	}
 }
 
 TEST(OrderedMapTests, ErasureTests) {
@@ -251,7 +336,7 @@ TEST(OrderedMapTests, LookupTests) {
 		ASSERT_FALSE(map.contains(-integer));
 		ASSERT_EQ(0, map.count(-integer));
 		ASSERT_TRUE(map.contains(integer));
-		ASSERT_TRUE(1, map.count(integer));
+		ASSERT_EQ(1, map.count(integer));
 	}
 }
 

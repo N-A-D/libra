@@ -226,6 +226,7 @@ TEST(OrderedMapTests, ElementAccess) {
 	std::shuffle(integers.begin(), integers.end(), gen);
 	for (auto integer : integers) {
 		ASSERT_TRUE(map.at(integer));
+		ASSERT_TRUE(map[integer]);
 	}
 }
 
@@ -236,10 +237,12 @@ TEST(OrderedMapTests, TryEmplace) {
 	for (auto integer : integers) {
 		map.try_emplace(integer, false);
 		ASSERT_FALSE(map.at(integer));
+		ASSERT_FALSE(map[integer]);
 	}
 	for (auto integer : integers) {
 		map.try_emplace(integer, true);
 		ASSERT_FALSE(map.at(integer)); // The elements remain false
+		ASSERT_FALSE(map[integer]);
 	}
 	map.clear();
 
@@ -253,6 +256,7 @@ TEST(OrderedMapTests, TryEmplace) {
 	for (auto integer : integers) {
 		map.try_emplace(it, integer, true);
 		ASSERT_TRUE(map.at(integer));
+		ASSERT_TRUE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
 	}
 
@@ -261,6 +265,7 @@ TEST(OrderedMapTests, TryEmplace) {
 	for (auto integer : integers) {
 		map.try_emplace(it, integer, false);
 		ASSERT_TRUE(map.at(integer));
+		ASSERT_TRUE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
 	}
 }
@@ -272,10 +277,12 @@ TEST(OrderedMapTests, InsertOrAssignTests) {
 	for (auto integer : integers) {
 		map.insert_or_assign(integer, false);
 		ASSERT_FALSE(map.at(integer));
+		ASSERT_FALSE(map[integer]);
 	}
 	for (auto integer : integers) {
 		map.insert_or_assign(integer, true);
-		ASSERT_TRUE(map.at(integer)); // The elements remain false
+		ASSERT_TRUE(map.at(integer));
+		ASSERT_TRUE(map[integer]);
 	}
 	map.clear();
 
@@ -289,6 +296,7 @@ TEST(OrderedMapTests, InsertOrAssignTests) {
 	for (auto integer : integers) {
 		map.insert_or_assign(it, integer, true);
 		ASSERT_TRUE(map.at(integer));
+		ASSERT_TRUE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
 	}
 
@@ -297,6 +305,7 @@ TEST(OrderedMapTests, InsertOrAssignTests) {
 	for (auto integer : integers) {
 		map.insert_or_assign(it, integer, false);
 		ASSERT_FALSE(map.at(integer));
+		ASSERT_FALSE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
 	}
 }

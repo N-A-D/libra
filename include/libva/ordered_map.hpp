@@ -8,33 +8,33 @@ namespace va {
 
 	template <
 		class Key,
-		class Value,
+		class MappedType,
 		class Compare = std::less<Key>,
-		class Allocator = std::allocator<std::pair<Key, Value>>
+		class Allocator = std::allocator<std::pair<Key, MappedType>>
 	> class ordered_map 
 		: public detail::ordered_container
 					<
 						Key, // key of value
-						std::pair<Key, Value>, // container value
+						std::pair<Key, MappedType>, // container value
 						Compare, // key comparator
 						Allocator, // container allocator type
-						detail::select1st<std::pair<Key, Value>>, // key extractor
+						detail::select1st<std::pair<Key, MappedType>>, // key extractor
 						false // duplicates not allowed
 					>
 	{
 		using base_type = detail::ordered_container
 							<
 								Key, // key of value
-								std::pair<Key, Value>, // container value
+								std::pair<Key, MappedType>, // container value
 								Compare, // key comparator
 								Allocator, // container allocator type
-								detail::select1st<std::pair<Key, Value>>, // key extractor
+								detail::select1st<std::pair<Key, MappedType>>, // key extractor
 								false // duplicates not allowed
 							>;
 	public:
 		
 		using typename base_type::key_type;
-		using mapped_type = Value;
+		using mapped_type = MappedType;
 		using typename base_type::value_type;
 		using typename base_type::size_type;
 		using typename base_type::difference_type;
@@ -266,4 +266,14 @@ namespace va {
 
 	};
 
+}
+
+namespace std {
+	template <class Key, class MappedType, class Compare, class Allocator>
+	void swap(
+		va::ordered_map<Key, MappedType, Compare, Allocator>& lhs,
+		va::ordered_map<Key, MappedType, Compare, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs)))
+	{
+		lhs.swap(rhs);
+	}
 }

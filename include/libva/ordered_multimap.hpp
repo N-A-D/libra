@@ -5,31 +5,29 @@
 
 namespace va {
 
-	namespace dtl = detail;
-
 	template <
 		class Key,
 		class Value,
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<std::pair<Key, Value>>
 	> class ordered_multimap
-		: public dtl::ordered_container
+		: public detail::ordered_container
 					<
 						Key, // key of value
 						std::pair<Key, Value>, // container value
 						Compare, // key comparator
 						Allocator, // container allocator type
-						dtl::select1st<std::pair<Key, Value>>, // key extractor
+						detail::select1st<std::pair<Key, Value>>, // key extractor
 						true // duplicates allowed
 					>
 	{
-		using base_type = dtl::ordered_container
+		using base_type = detail::ordered_container
 							<
 								Key, // key of value
 								std::pair<Key, Value>, // container value
 								Compare, // key comparator
 								Allocator, // container allocator type
-								dtl::select1st<std::pair<Key, Value>>, // key extractor
+								detail::select1st<std::pair<Key, Value>>, // key extractor
 								true // duplicates allowed
 							>;
 	public:

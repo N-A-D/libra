@@ -5,30 +5,28 @@
 
 namespace va {
 
-	namespace dtl = detail;
-
 	template <
 		class Key,
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<Key>
 	> class ordered_multiset
-		: public dtl::ordered_container
+		: public detail::ordered_container
 					<
 						Key, // key of value
 						Key, // container value
 						Compare, // key comparator
 						Allocator, // container allocator
-						dtl::identity<Key>, // key extractor
+						detail::identity<Key>, // key extractor
 						true // duplicates allowed
 					>
 	{
-		using base_type = dtl::ordered_container
+		using base_type = detail::ordered_container
 							<
 								Key, // key of value
 								Key, // container value
 								Compare, // key comparator
 								Allocator, // container allocator
-								dtl::identity<Key>, // key extractor
+								detail::identity<Key>, // key extractor
 								true // duplicates allowed
 							>;
 	public:

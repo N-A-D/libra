@@ -112,17 +112,16 @@ namespace va {
 				EquivalenceRelation is_equal;
 
 				m_data.emplace_back(std::forward<Args>(args)...);
-				auto lower = lower_bound(key_of(m_data.back()));
-				if (lower == std::prev(end())) {
+				auto last = std::prev(end());
+				auto lower = priv_lower_bound(begin(), last, key_of(*last));
+				if (lower == last)
 					return { lower, true };
-				}
-				else if (is_equal(key_of(*lower), key_of(m_data.back()))) {
+				else if (is_equal(key_of(*lower), key_of(*last))) {
 					m_data.pop_back();
 					return { lower, false };
 				}
-				else {
+				else
 					return { std::rotate(lower, std::prev(end()), end()), true };
-				}
 			}
 
 			template <class... Args>
@@ -157,7 +156,7 @@ namespace va {
 					}
 				}
 				else {
-					auto lower = priv_lower_bound(pos, end(), key_of(*last));
+					auto lower = priv_lower_bound(pos, last, key_of(*last));
 					if (lower == last)
 						return lower;
 					else if (is_equal(key_of(*lower), key_of(*last))) {
@@ -173,9 +172,7 @@ namespace va {
 			iterator emplace_common(Args&& ...args) {
 				ExtractKey key_of;
 				m_data.emplace_back(std::forward<Args>(args)...);
-				auto upper = upper_bound(key_of(m_data.back()));
-				if (upper == end())
-					return std::prev(end());
+				auto upper = priv_upper_bound(begin(), std::prev(end()), key_of(m_data.back()));
 				return std::rotate(upper, std::prev(end()), end());
 			}
 
@@ -193,15 +190,15 @@ namespace va {
 				iterator last = std::prev(end());
 
 				if (pos == last || m_val_cmp(*last, *pos)) {
-					if (pos == begin() || m_val_cmp(*std::prev(pos), *last) || is_equal(key_of(*std::prev(pos)), key_of(*last)))
+					if (pos == begin() 
+						|| m_val_cmp(*std::prev(pos), *last) 
+						|| is_equal(key_of(*std::prev(pos)), key_of(*last)))
 						return std::rotate(pos, last, end());
 					else
 						return std::rotate(priv_upper_bound(begin(), std::prev(pos), key_of(*last)), last, end());
 				}
 				else {
-					auto upper = priv_upper_bound(pos, end(), key_of(*last));
-					if (upper == end())
-						return last;
+					auto upper = priv_upper_bound(pos, std::prev(end()), key_of(*last));
 					return std::rotate(upper, last, end());
 				}
 			}
@@ -307,7 +304,10 @@ namespace va {
 
 			// assignment
 			ordered_container& operator=(const ordered_container&) = default;
-			ordered_container& operator=(ordered_container&&) = default;
+			ordered_container& operator=(ordered_container&&) 
+				noexcept(
+					std::allocator_traits<Allocator>::is_always_equal::value
+					&& std::is_nothrow_move_assignable<Compare>::value) = default;
 			ordered_container& operator=(std::initializer_list<value_type> list) {
 				clear();
 				insert(list);
@@ -393,10 +393,15 @@ namespace va {
 				return count;
 			}
 
-			void swap(ordered_container& other) {
-				m_data.swap(other.m_data);
-				std::swap(m_key_cmp, other.m_key_cmp);
-				std::swap(m_val_cmp, other.m_val_cmp);
+			void swap(ordered_container& other)
+				noexcept(std::allocator_traits<Allocator>::is_always_equal::value
+					&& std::is_nothrow_swappable<Compare>::value)
+			{
+				if (this != &other) {
+					m_data.swap(other.m_data);
+					std::swap(m_key_cmp, other.m_key_cmp);
+					std::swap(m_val_cmp, other.m_val_cmp);
+				}
 			}
 
 			// lookup

@@ -139,3 +139,13 @@ namespace va {
 	};
 
 }
+
+namespace std {
+	template <class Key, class Compare, class Allocator>
+	void swap(
+		va::ordered_multiset<Key, Compare, Allocator>& lhs,
+		va::ordered_multiset<Key, Compare, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs)))
+	{
+		lhs.swap(rhs);
+	}
+}

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iterator>
 #include <algorithm>
+#include <type_traits>
 
 namespace va {
 	namespace detail {
@@ -13,7 +14,8 @@ namespace va {
 			class Value,
 			class Compare,
 			class Allocator,
-			class ExtractKey
+			class ExtractKey,
+			bool AllowDuplicates
 		> class ordered_container {
 			using container_type = std::vector<Value, Allocator>;
 		public:
@@ -40,7 +42,7 @@ namespace va {
 				value_compare(Compare c)
 					: m_cmp(c) {}
 			public:
-				bool operator()(const Value& lhs, const Value& rhs) const {
+				bool operator()(const value_type& lhs, const value_type& rhs) const {
 					ExtractKey key_of;
 					return m_cmp(key_of(lhs), key_of(rhs));
 				}
@@ -48,20 +50,20 @@ namespace va {
 
 		private:
 
+			key_compare m_key_cmp;
+			value_compare m_val_cmp;
+			container_type m_data;
+
 			struct EquivalenceRelation {
 				Compare m_cmp{};
-				bool operator()(const Key& lhs, const Key& rhs) const {
+				bool operator()(const key_type& lhs, const key_type& rhs) const {
 					return !m_cmp(lhs, rhs)
 						&& !m_cmp(rhs, lhs);
 				}
 			};
 
-			key_compare m_key_cmp;
-			value_compare m_val_cmp;
-			container_type m_data;
-
 			template <class RndIt>
-			RndIt priv_lower_bound(RndIt first, RndIt last, const Key& key) const {
+			RndIt priv_lower_bound(RndIt first, RndIt last, const key_type& key) const {
 				ExtractKey key_of;
 				std::iterator_traits<RndIt>::difference_type len, step;
 				len = last - first;
@@ -81,7 +83,7 @@ namespace va {
 			}
 
 			template <class RndIt>
-			RndIt priv_upper_bound(RndIt first, RndIt last, const Key& key) const {
+			RndIt priv_upper_bound(RndIt first, RndIt last, const key_type& key) const {
 				ExtractKey key_of;
 				std::iterator_traits<RndIt>::difference_type len, step;
 				len = last - first;
@@ -103,71 +105,6 @@ namespace va {
 			bool iterator_in_range(const_iterator it) const {
 				return cbegin() <= it && it <= cend();
 			}
-
-		protected:
-
-			// ctor
-			ordered_container()
-				: m_key_cmp(Compare())
-				, m_val_cmp(Compare()) 
-				, m_data() {}
-
-			explicit ordered_container(const Compare& comp, const Allocator& alloc = Allocator())
-				: m_key_cmp(comp)
-				, m_val_cmp(comp)
-				, m_data(alloc) {}
-
-			explicit ordered_container(const Allocator& alloc)
-				: ordered_container(Compare(), alloc) {}
-
-			ordered_container(const ordered_container&) = default;
-			ordered_container(const ordered_container& other, const Allocator& alloc)
-				: m_key_cmp(other.m_key_cmp)
-				, m_val_cmp(other.m_val_cmp)
-				, m_data(other.m_data, alloc) {}
-
-			ordered_container(ordered_container&&) = default;
-			ordered_container(ordered_container&& other, const Allocator& alloc)
-				: m_key_cmp(std::move(other.m_key_cmp))
-				, m_val_cmp(std::move(other.m_val_cmp))
-				, m_data(std::move(other.m_data), alloc) {}
-
-			// dtor
-			~ordered_container() = default;
-
-			// assignment
-			ordered_container& operator=(const ordered_container&) = default;
-			ordered_container& operator=(ordered_container&&) = default;
-
-			allocator_type get_allocator() const noexcept { return m_data.get_allocator(); }
-
-			// iterators
-			iterator begin() noexcept { return m_data.begin(); }
-			const_iterator begin() const noexcept { return m_data.begin(); }
-			const_iterator cbegin() const noexcept { return m_data.cbegin(); }
-
-			iterator end() noexcept { return m_data.end(); }
-			const_iterator end() const noexcept { return m_data.end(); }
-			const_iterator cend() const noexcept { return m_data.cend(); }
-
-			reverse_iterator rbegin() noexcept { return m_data.rbegin(); }
-			const_reverse_iterator rbegin() const noexcept { return m_data.rbegin(); }
-			const_reverse_iterator crbegin() const noexcept { return m_data.crbegin(); }
-
-			reverse_iterator rend() noexcept { return m_data.rend(); }
-			const_reverse_iterator rend() const noexcept { return m_data.rend(); }
-			const_reverse_iterator crend() const noexcept { return m_data.crend(); }
-
-			// capacity
-			bool empty() const noexcept { return m_data.empty(); }
-			size_type size() const noexcept { return m_data.size(); }
-			size_type max_size() const noexcept { return m_data.max_size(); }
-			size_type capacity() const noexcept { return m_data.capacity(); }
-			void reserve(size_type new_cap) { m_data.reserve(new_cap); }
-			void shrink_to_fit() { m_data.shrink_to_fit(); }
-
-			// modifiers
-			void clear() noexcept { m_data.clear(); }
 
 			template <class... Args>
 			std::pair<iterator, bool> emplace_unique(Args&& ...args) {
@@ -221,7 +158,7 @@ namespace va {
 				}
 				else {
 					auto lower = priv_lower_bound(pos, end(), key_of(*last));
-					if (lower == last) 
+					if (lower == last)
 						return lower;
 					else if (is_equal(key_of(*lower), key_of(*last))) {
 						m_data.pop_back();
@@ -269,13 +206,186 @@ namespace va {
 				}
 			}
 
+			friend bool operator==(
+				const ordered_container& lhs,
+				const ordered_container& rhs)
+			{
+				auto comp = lhs.value_comp();
+				auto equal = [&comp](const auto& lhs, const auto& rhs) {
+					return !comp(lhs, rhs) && !comp(rhs, lhs);
+				};
+				return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), equal);
+			}
+
+			friend bool operator!=(
+				const ordered_container& lhs,
+				const ordered_container& rhs)
+			{
+				return !(lhs == rhs);
+			}
+
+			friend bool operator<(
+				const ordered_container& lhs,
+				const ordered_container& rhs)
+			{
+				return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), lhs.value_comp());
+			}
+
+
+			friend bool operator<=(
+				const ordered_container& lhs,
+				const ordered_container& rhs)
+			{
+				return lhs < rhs || lhs == rhs;
+			}
+
+			friend bool operator>(
+				const ordered_container& lhs,
+				const ordered_container& rhs)
+			{
+				return rhs < lhs;
+			}
+
+			friend bool operator>=(
+				const ordered_container& lhs,
+				const ordered_container& rhs)
+			{
+				return lhs > rhs || lhs == rhs;
+			}
+
+		public:
+
+			// ctor
+			ordered_container()
+				: ordered_container(Compare(), Allocator()) {}
+
+			explicit ordered_container(const Compare& comp, const Allocator& alloc = Allocator())
+				: m_key_cmp(comp)
+				, m_val_cmp(comp)
+				, m_data(alloc) {}
+
+			explicit ordered_container(const Allocator& alloc)
+				: ordered_container(Compare(), alloc) {}
+
+			template <class InIt>
+			ordered_container(InIt first, InIt last,
+				const Compare& comp = Compare(),
+				const Allocator& alloc = Allocator())
+				: ordered_container(comp, alloc)
+			{
+				insert(first, last);
+			}
+
+			template <class InIt>
+			ordered_container(InIt first, InIt last,
+				const Allocator& alloc)
+				: ordered_container(first, last, Compare(), alloc) {}
+
+			ordered_container(const ordered_container&) = default;
+			ordered_container(const ordered_container& other, const Allocator& alloc)
+				: m_key_cmp(other.m_key_cmp)
+				, m_val_cmp(other.m_val_cmp)
+				, m_data(other.m_data, alloc) {}
+
+			ordered_container(ordered_container&&) = default;
+			ordered_container(ordered_container&& other, const Allocator& alloc)
+				: m_key_cmp(std::move(other.m_key_cmp))
+				, m_val_cmp(std::move(other.m_val_cmp))
+				, m_data(std::move(other.m_data), alloc) {}
+
+			ordered_container(std::initializer_list<value_type> list,
+				const Compare& comp = Compare(),
+				const Allocator& alloc = Allocator())
+				: ordered_container(list.begin(), list.end(), comp, alloc) {}
+
+			ordered_container(std::initializer_list<value_type> list,
+				const Allocator& alloc)
+				: ordered_container(list, Compare(), alloc) {}
+
+			// dtor
+			~ordered_container() = default;
+
+			// assignment
+			ordered_container& operator=(const ordered_container&) = default;
+			ordered_container& operator=(ordered_container&&) = default;
+			ordered_container& operator=(std::initializer_list<value_type> list) {
+				clear();
+				insert(list);
+				return *this;
+			}
+
+			allocator_type get_allocator() const noexcept { return m_data.get_allocator(); }
+
+			// iterators
+			iterator begin() noexcept { return m_data.begin(); }
+			const_iterator begin() const noexcept { return m_data.begin(); }
+			const_iterator cbegin() const noexcept { return m_data.cbegin(); }
+
+			iterator end() noexcept { return m_data.end(); }
+			const_iterator end() const noexcept { return m_data.end(); }
+			const_iterator cend() const noexcept { return m_data.cend(); }
+
+			reverse_iterator rbegin() noexcept { return m_data.rbegin(); }
+			const_reverse_iterator rbegin() const noexcept { return m_data.rbegin(); }
+			const_reverse_iterator crbegin() const noexcept { return m_data.crbegin(); }
+
+			reverse_iterator rend() noexcept { return m_data.rend(); }
+			const_reverse_iterator rend() const noexcept { return m_data.rend(); }
+			const_reverse_iterator crend() const noexcept { return m_data.crend(); }
+
+			// capacity
+			bool empty() const noexcept { return m_data.empty(); }
+			size_type size() const noexcept { return m_data.size(); }
+			size_type max_size() const noexcept { return m_data.max_size(); }
+			size_type capacity() const noexcept { return m_data.capacity(); }
+			void reserve(size_type new_cap) { m_data.reserve(new_cap); }
+			void shrink_to_fit() { m_data.shrink_to_fit(); }
+
+			// modifiers
+			void clear() noexcept { m_data.clear(); }
+
+			auto insert(const value_type& value) { return emplace(value); }
+			auto insert(value_type&& value) { return emplace(std::move(value)); }
+
+			iterator insert(iterator hint, const value_type& value) { return emplace_hint(hint, value); }
+			iterator insert(const_iterator hint, const value_type& value) { return emplace_hint(hint, value); }
+			iterator insert(const_iterator hint, value_type&& value) { return emplace_hint(hint, std::move(value)); }
+
+			template <class InIt>
+			void insert(InIt first, InIt last) {
+				for (auto it = first; it != last; ++it)
+					insert(cend(), *it);
+			}
+
+			void insert(std::initializer_list<value_type> list) { insert(list.begin(), list.end()); }
+
+			template <class... Args>
+			auto emplace(Args&&... args) {
+				if constexpr (AllowDuplicates) {
+					return emplace_common(std::forward<Args>(args)...);
+				}
+				else {
+					return emplace_unique(std::forward<Args>(args)...);
+				}
+			}
+
+			template <class... Args>
+			auto emplace_hint(const_iterator hint, Args&&... args) {
+				if constexpr (AllowDuplicates) {
+					return emplace_hint_common(hint, std::forward<Args>(args)...);
+				}
+				else {
+					return emplace_hint_unique(hint, std::forward<Args>(args)...);
+				}
+			}
+
 			iterator erase(iterator pos) { return m_data.erase(pos); }
 			iterator erase(const_iterator pos) { return m_data.erase(pos); }
 			iterator erase(const_iterator first, const_iterator last) { 
 				return m_data.erase(first, last);
 			}
 
-			size_type erase(const Key& key) {
+			size_type erase(const key_type& key) {
 				auto range = equal_range(key);
 				auto count = range.second - range.first;
 				if (count > 0)
@@ -290,49 +400,49 @@ namespace va {
 			}
 
 			// lookup
-			size_type count(const Key& key) const {
+			size_type count(const key_type& key) const {
 				auto range = equal_range(key);
 				return range.second - range.first;
 			}
 
-			iterator find(const Key& key) {
+			iterator find(const key_type& key) {
 				EquivalenceRelation is_equal;
 				ExtractKey key_of;
 				auto lower = lower_bound(key);
 				return lower != end() && is_equal(key_of(*lower), key) ? lower : end();
 			}
 
-			const_iterator find(const Key& key) const {
+			const_iterator find(const key_type& key) const {
 				EquivalenceRelation is_equal;
 				ExtractKey key_of;
 				auto lower = lower_bound(key);
 				return lower != end() && is_equal(key_of(*lower), key) ? lower : end();
 			}
 
-			bool contains(const Key& key) const {
+			bool contains(const key_type& key) const {
 				return find(key) != end();
 			}
 
-			std::pair<iterator, iterator> equal_range(const Key& key) {
+			std::pair<iterator, iterator> equal_range(const key_type& key) {
 				return { lower_bound(key), upper_bound(key) };
 			}
-			std::pair<const_iterator, const_iterator> equal_range(const Key& key) const {
+			std::pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
 				return { lower_bound(key), upper_bound(key) };
 			}
 
-			iterator lower_bound(const Key& key) { 
+			iterator lower_bound(const key_type& key) {
 				return priv_lower_bound(begin(), end(), key); 
 			}
 
-			const_iterator lower_bound(const Key& key) const { 
+			const_iterator lower_bound(const key_type& key) const {
 				return priv_lower_bound(begin(), end(), key); 
 			}
 
-			iterator upper_bound(const Key& key) { 
+			iterator upper_bound(const key_type& key) {
 				return priv_upper_bound(begin(), end(), key); 
 			}
 
-			const_iterator upper_bound(const Key& key) const { 
+			const_iterator upper_bound(const key_type& key) const {
 				return priv_upper_bound(begin(), end(), key);
 			}
 
@@ -340,35 +450,6 @@ namespace va {
 			key_compare key_comp() const { return m_key_cmp; }
 			value_compare value_comp() const { return m_val_cmp; }
 
-
-			// non-member operators
-			friend bool operator==(const ordered_container& lhs, const ordered_container& rhs) {
-				auto comp = lhs.value_comp();
-				auto is_equal = [&comp](const value_type& left, const value_type& right) {
-					return !comp(left, right) && !comp(right, left);
-				};
-				return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), is_equal);
-			}
-
-			friend bool operator!=(const ordered_container& lhs, const ordered_container& rhs) {
-				return !(lhs == rhs);
-			}
-
-			friend bool operator<(const ordered_container& lhs, const ordered_container& rhs) {
-				return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), lhs.value_comp());
-			}
-
-			friend bool operator<=(const ordered_container& lhs, const ordered_container& rhs) {
-				return lhs < rhs || lhs == rhs;
-			}
-
-			friend bool operator>(const ordered_container& lhs, const ordered_container& rhs) {
-				return rhs < lhs;
-			}
-
-			friend bool operator>=(const ordered_container& lhs, const ordered_container& rhs) {
-				return lhs > rhs || lhs == rhs;
-			}
 		};
 
 	}

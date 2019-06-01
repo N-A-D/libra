@@ -6,20 +6,31 @@
 
 namespace va {
 
+	namespace dtl = detail;
+
 	template <
 		class Key,
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<Key>
 	> class ordered_set 
-		: public detail::ordered_container<Key, Key, Compare, Allocator, detail::identity<Key>> 
+		: public dtl::ordered_container
+					<
+						Key, // key of value
+						Key, // container value
+						Compare, // key comparator
+						Allocator, // container allocator
+						dtl::identity<Key>, // key extractor
+						false // duplicates not allowed
+					> 
 	{
-		using base_type = detail::ordered_container
+		using base_type = dtl::ordered_container
 							<
-								Key, 
-								Key, 
-								Compare, 
-								Allocator, 
-								detail::identity<Key>
+								Key, // key of value
+								Key, // container value
+								Compare, // key comparator
+								Allocator, // container allocator
+								dtl::identity<Key>, // key extractor
+								false // duplicates not allowed
 							>;
 	public:
 
@@ -46,21 +57,18 @@ namespace va {
 			: base_type(comp, alloc) {}
 
 		explicit ordered_set(const Allocator& alloc)
-			: ordered_set(Compare(), alloc) {}
+			: base_type(alloc) {}
 
 		template <class InIt>
 		ordered_set(InIt first, InIt last,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
-			: ordered_set(comp, alloc)
-		{
-			insert(first, last);
-		}
+			: base_type(first, last, comp, alloc) {}
 
 		template <class InIt>
 		ordered_set(InIt first, InIt last,
 			const Allocator& alloc)
-			: ordered_set(first, last, Compare(), alloc) {}
+			: base_type(first, last, alloc) {}
 
 		ordered_set(const ordered_set&) = default;
 		ordered_set(const ordered_set& other, const Allocator& alloc)
@@ -73,11 +81,11 @@ namespace va {
 		ordered_set(std::initializer_list<value_type> list,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
-			: ordered_set(list.begin(), list.end(), comp, alloc) {}
+			: base_type(list, comp, alloc) {}
 
 		ordered_set(std::initializer_list<value_type> list,
 			const Allocator& alloc)
-			: ordered_set(list, Compare(), alloc) {}
+			: base_type(list, alloc) {}
 
 		// dtor
 		~ordered_set() = default;
@@ -86,8 +94,7 @@ namespace va {
 		ordered_set& operator=(const ordered_set&) = default;
 		ordered_set& operator=(ordered_set&&) = default;
 		ordered_set& operator=(std::initializer_list<value_type> list) {
-			clear();
-			insert(list);
+			base_type::operator=(list);
 			return *this;
 		}
 
@@ -114,34 +121,10 @@ namespace va {
 
 		// modifiers
 		using base_type::clear;
-
-		std::pair<iterator, bool> insert(const value_type& value) { return emplace(value); }
-		std::pair<iterator, bool> insert(value_type&& value) { return emplace(std::move(value)); }
-
-		iterator insert(iterator hint, const value_type& value) { return emplace_hint(hint, value); }
-		iterator insert(const_iterator hint, const value_type& value) { return emplace_hint(hint, value); }
-		iterator insert(const_iterator hint, value_type&& value) { return emplace_hint(hint, std::move(value)); }
-
-		template <class InIt>
-		void insert(InIt first, InIt last) {
-			for (auto it = first; it != last; ++it)
-				insert(end(), *it);
-		}
-
-		void insert(std::initializer_list<value_type> list) { insert(list.begin(), list.end()); }
-
-		template <class... Args>
-		std::pair<iterator, bool> emplace(Args&&... args) {
-			return base_type::emplace_unique(std::forward<Args>(args)...);
-		}
-
-		template <class... Args>
-		iterator emplace_hint(const_iterator hint, Args&&... args) {
-			return base_type::emplace_hint_unique(hint, std::forward<Args>(args)...);
-		}
-
+		using base_type::insert;
+		using base_type::emplace;
+		using base_type::emplace_hint;
 		using base_type::erase;
-
 		using base_type::swap;
 
 		// lookup
@@ -155,6 +138,7 @@ namespace va {
 		// observers
 		using base_type::key_comp;
 		using base_type::value_comp;
+
 	};
 
 }

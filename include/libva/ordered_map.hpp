@@ -7,21 +7,32 @@
 
 namespace va {
 
+	namespace dtl = detail;
+
 	template <
 		class Key,
 		class Value,
 		class Compare = std::less<Key>,
 		class Allocator = std::allocator<std::pair<Key, Value>>
 	> class ordered_map 
-	: public detail::ordered_container<Key, std::pair<Key, Value>, Compare, Allocator, detail::select1st<std::pair<Key, Value>>>
+		: public dtl::ordered_container
+					<
+						Key, // key of value
+						std::pair<Key, Value>, // container value
+						Compare, // key comparator
+						Allocator, // container allocator type
+						dtl::select1st<std::pair<Key, Value>>, // key extractor
+						false // duplicates not allowed
+					>
 	{
-		using base_type = detail::ordered_container
+		using base_type = dtl::ordered_container
 							<
-								Key,
-								std::pair<Key, Value>,
-								Compare, 
-								Allocator, 
-								detail::select1st<std::pair<Key, Value>>
+								Key, // key of value
+								std::pair<Key, Value>, // container value
+								Compare, // key comparator
+								Allocator, // container allocator type
+								dtl::select1st<std::pair<Key, Value>>, // key extractor
+								false // duplicates not allowed
 							>;
 	public:
 		
@@ -49,21 +60,18 @@ namespace va {
 			: base_type(comp, alloc) {}
 
 		explicit ordered_map(const Allocator& alloc)
-			: ordered_map(Compare(), alloc) {}
+			: base_type(alloc) {}
 
 		template <class InIt>
 		ordered_map(InIt first, InIt last,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
-			: ordered_map(comp, alloc)
-		{
-			insert(first, last);
-		}
+			: base_type(first, last, comp, alloc) {}
 
 		template <class InIt>
 		ordered_map(InIt first, InIt last,
 			const Allocator& alloc)
-			: ordered_map(first, last, Compare(), alloc) {}
+			: base_type(first, last, alloc) {}
 
 		ordered_map(const ordered_map&) = default;
 		ordered_map(const ordered_map& other, const Allocator& alloc)
@@ -76,11 +84,11 @@ namespace va {
 		ordered_map(std::initializer_list<value_type> list,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
-			: ordered_map(list.begin(), list.end(), comp, alloc) {}
+			: base_type(list, comp, alloc) {}
 
 		ordered_map(std::initializer_list<value_type> list,
 			const Allocator& alloc)
-			: ordered_map(list, Compare(), alloc) {}
+			: base_type(list, alloc) {}
 
 		// dtor
 		~ordered_map() = default;
@@ -89,8 +97,7 @@ namespace va {
 		ordered_map& operator=(const ordered_map&) = default;
 		ordered_map& operator=(ordered_map&&) = default;
 		ordered_map& operator=(std::initializer_list<value_type> list) {
-			clear();
-			insert(list);
+			base_type::operator=(list);
 			return *this;
 		}
 
@@ -150,21 +157,11 @@ namespace va {
 
 		// modifiers
 		using base_type::clear;
-
-		std::pair<iterator, bool> insert(const value_type& value) { return emplace(value); }
-		std::pair<iterator, bool> insert(value_type&& value) { return emplace(std::move(value)); }
-
-		iterator insert(iterator hint, const value_type& value) { return emplace_hint(hint, value); }
-		iterator insert(const_iterator hint, const value_type& value) { return emplace_hint(hint, value); }
-		iterator insert(const_iterator hint, value_type&& value) { return emplace_hint(hint, std::move(value)); }
-
-		template <class InIt>
-		void insert(InIt first, InIt last) {
-			for (auto it = first; it != last; ++it)
-				insert(end(), *it);
-		}
-
-		void insert(std::initializer_list<value_type> list) { insert(list.begin(), list.end()); }
+		using base_type::insert;
+		using base_type::emplace;
+		using base_type::emplace_hint;
+		using base_type::erase;
+		using base_type::swap;
 
 		template <class M>
 		std::pair<iterator, bool> insert_or_assign(const key_type& k, M&& obj) {
@@ -208,16 +205,6 @@ namespace va {
 			}
 			else
 				return emplace_hint(hint, std::move(k), std::forward<M>(obj));
-		}
-
-		template <class... Args>
-		std::pair<iterator, bool> emplace(Args&&... args) {
-			return base_type::emplace_unique(std::forward<Args>(args)...);
-		}
-
-		template <class... Args>
-		iterator emplace_hint(const_iterator hint, Args&&... args) {
-			return base_type::emplace_hint_unique(hint, std::forward<Args>(args)...);
 		}
 
 		template <class... Args>
@@ -267,10 +254,6 @@ namespace va {
 					std::forward_as_tuple(std::forward<Args>(args)...));
 
 		}
-
-		using base_type::erase;
-
-		using base_type::swap;
 
 		// lookup
 		using base_type::count;

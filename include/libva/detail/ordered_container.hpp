@@ -121,7 +121,7 @@ namespace va {
 					return { lower, false };
 				}
 				else
-					return { std::rotate(lower, std::prev(end()), end()), true };
+					return { std::rotate(lower, last, end()), true };
 			}
 
 			template <class... Args>
@@ -198,7 +198,7 @@ namespace va {
 						return std::rotate(priv_upper_bound(begin(), std::prev(pos), key_of(*last)), last, end());
 				}
 				else {
-					auto upper = priv_upper_bound(pos, std::prev(end()), key_of(*last));
+					auto upper = priv_upper_bound(pos, last, key_of(*last));
 					return std::rotate(upper, last, end());
 				}
 			}

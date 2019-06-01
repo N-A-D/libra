@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdexcept>
-#include <initializer_list>
 #include "detail/extract_key.hpp"
 #include "detail/ordered_container.hpp"
 

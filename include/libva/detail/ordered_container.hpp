@@ -203,53 +203,6 @@ namespace va {
 				}
 			}
 
-			friend bool operator==(
-				const ordered_container& lhs,
-				const ordered_container& rhs)
-			{
-				auto comp = lhs.value_comp();
-				auto equal = [&comp](const auto& lhs, const auto& rhs) {
-					return !comp(lhs, rhs) && !comp(rhs, lhs);
-				};
-				return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), equal);
-			}
-
-			friend bool operator!=(
-				const ordered_container& lhs,
-				const ordered_container& rhs)
-			{
-				return !(lhs == rhs);
-			}
-
-			friend bool operator<(
-				const ordered_container& lhs,
-				const ordered_container& rhs)
-			{
-				return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), lhs.value_comp());
-			}
-
-
-			friend bool operator<=(
-				const ordered_container& lhs,
-				const ordered_container& rhs)
-			{
-				return lhs < rhs || lhs == rhs;
-			}
-
-			friend bool operator>(
-				const ordered_container& lhs,
-				const ordered_container& rhs)
-			{
-				return rhs < lhs;
-			}
-
-			friend bool operator>=(
-				const ordered_container& lhs,
-				const ordered_container& rhs)
-			{
-				return lhs > rhs || lhs == rhs;
-			}
-
 		public:
 
 			// ctor
@@ -456,6 +409,59 @@ namespace va {
 			value_compare value_comp() const { return m_val_cmp; }
 
 		};
+
+		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		bool operator==(
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+		{
+			auto comp = lhs.value_comp();
+			auto equal = [&comp](const auto& lhs, const auto& rhs) {
+				return !comp(lhs, rhs) && !comp(rhs, lhs);
+			};
+			return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), equal);
+		}
+
+		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		bool operator!=(
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+		{
+			return !(lhs == rhs);
+		}
+
+		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		bool operator<(
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+		{
+			return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), lhs.value_comp());
+		}
+
+		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		bool operator<=(
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+		{
+			return !(rhs < lhs);
+		}
+		
+		
+		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		bool operator>(
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+		{
+			return rhs < lhs;
+		}
+
+		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		bool operator>=(
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+		{
+			return !(lhs < rhs);
+		}
 
 	}
 }

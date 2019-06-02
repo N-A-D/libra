@@ -1,3 +1,3 @@
 #pragma once
 
-constexpr int N = 100;
+constexpr int N = 50;

@@ -80,7 +80,7 @@ namespace va {
 		ordered_multimap(std::initializer_list<value_type> list,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
-			: base_type(list comp, alloc) {}
+			: base_type(list, comp, alloc) {}
 
 		ordered_multimap(std::initializer_list<value_type> list,
 			const Allocator& alloc)

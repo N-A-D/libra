@@ -241,7 +241,7 @@ TEST(OrderedMultisetTests, LookupTests) {
 
 	for (int i = 1; i <= N; ++i) {
 		ASSERT_FALSE(multiset.contains(std::pair(-i, i)));
-		ASSERT_EQ(0, multiset.contains(std::pair(-i, i)));
+		ASSERT_EQ(0, multiset.count(std::pair(-i, i)));
 		ASSERT_TRUE(multiset.contains(std::pair(i, i)));
 		ASSERT_EQ(N, multiset.count(std::pair(i, i)));
 	}

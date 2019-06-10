@@ -7,14 +7,13 @@ namespace va {
 	namespace detail {
 
 		template <
-			class Key,
 			class Value,
 			class Hash,
-			class EqualKey,
+			class KeyEqual,
 			class Allocator,
 			class ExtractKey
 		> class unordered_container {
-
+			
 		};
 
 	}

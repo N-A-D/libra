@@ -252,12 +252,16 @@ namespace va {
 			ordered_container(const ordered_container& other, const Allocator& alloc)
 				: m_key_cmp(other.m_key_cmp)
 				, m_val_cmp(other.m_val_cmp)
+				, m_equal(other.m_equal)
+				, m_extract(other.m_extract)
 				, m_data(other.m_data, alloc) {}
 
 			ordered_container(ordered_container&&) = default;
 			ordered_container(ordered_container&& other, const Allocator& alloc)
 				: m_key_cmp(std::move(other.m_key_cmp))
 				, m_val_cmp(std::move(other.m_val_cmp))
+				, m_equal(std::move(other.m_equal))
+				, m_extract(std::move(other.m_extract))
 				, m_data(std::move(other.m_data), alloc) {}
 
 			ordered_container(std::initializer_list<value_type> list,
@@ -368,11 +372,11 @@ namespace va {
 					&& std::is_nothrow_swappable<Compare>::value)
 			{
 				if (this != &other) {
-					m_data.swap(other.m_data);
 					std::swap(m_key_cmp, other.m_key_cmp);
 					std::swap(m_val_cmp, other.m_val_cmp);
 					std::swap(m_equal, other.m_equal);
 					std::swap(m_extract, other.m_extract);
+					std::swap(m_data, other.m_data);
 				}
 			}
 

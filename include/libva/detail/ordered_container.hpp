@@ -228,6 +228,7 @@ namespace va {
 				: m_key_cmp(comp)
 				, m_val_cmp(comp)
 				, m_equal(comp)
+				, m_extract()
 				, m_data(alloc) {}
 
 			explicit ordered_container(const Allocator& alloc)
@@ -370,6 +371,8 @@ namespace va {
 					m_data.swap(other.m_data);
 					std::swap(m_key_cmp, other.m_key_cmp);
 					std::swap(m_val_cmp, other.m_val_cmp);
+					std::swap(m_equal, other.m_equal);
+					std::swap(m_extract, other.m_extract);
 				}
 			}
 

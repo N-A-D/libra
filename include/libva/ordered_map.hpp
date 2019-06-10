@@ -14,7 +14,6 @@ namespace va {
 	> class ordered_map 
 		: public detail::ordered_container
 					<
-						Key, // key of value
 						std::pair<Key, MappedType>, // container value
 						Compare, // key comparator
 						Allocator, // container allocator type
@@ -24,7 +23,6 @@ namespace va {
 	{
 		using base_type = detail::ordered_container
 							<
-								Key, // key of value
 								std::pair<Key, MappedType>, // container value
 								Compare, // key comparator
 								Allocator, // container allocator type

@@ -11,6 +11,23 @@ namespace va {
 
 		template <
 			class Key,
+			class Compare,
+			class IsTransparent = void
+		> struct is_transparent 
+			: std::false_type {};
+
+		template <
+			class Key,
+			class Compare
+		> struct is_transparent<Key, Compare, std::void_t<typename Compare::is_transparent>> 
+			: std::true_type {};
+
+		template <
+			class Key,
+			class Compare
+		> constexpr bool is_transparent_v = is_transparent<Key, Compare>::value;
+
+		template <
 			class Value,
 			class Compare,
 			class Allocator,
@@ -20,7 +37,7 @@ namespace va {
 			using container_type = std::vector<Value, Allocator>;
 		public:
 
-			using key_type               = Key;
+			using key_type               = typename ExtractKey::type;
 			using value_type             = typename container_type::value_type;
 			using size_type              = typename container_type::size_type;
 			using difference_type        = typename container_type::difference_type;
@@ -50,21 +67,27 @@ namespace va {
 
 		private:
 
-			key_compare m_key_cmp;
-			value_compare m_val_cmp;
-			container_type m_data;
-
-			struct EquivalenceRelation {
+			struct CompareEqual {
 				Compare m_cmp{};
+				CompareEqual(Compare c)
+					: m_cmp(c) {}
 				bool operator()(const key_type& lhs, const key_type& rhs) const {
+					// Two keys compare equal if and only if neither compare less than the other
 					return !m_cmp(lhs, rhs)
 						&& !m_cmp(rhs, lhs);
 				}
 			};
 
-			template <class RndIt>
-			RndIt priv_lower_bound(RndIt first, RndIt last, const key_type& key) const {
-				ExtractKey key_of;
+			key_compare m_key_cmp;
+			value_compare m_val_cmp;
+			CompareEqual m_equal;
+			ExtractKey m_extract;
+			container_type m_data;
+
+			using emplace_return_type = std::conditional_t<AllowDuplicates, iterator, std::pair<iterator, bool>>;
+
+			template <class RndIt, class Key>
+			RndIt priv_lower_bound(RndIt first, RndIt last, const Key& key) const {
 				std::iterator_traits<RndIt>::difference_type len, step;
 				len = last - first;
 				RndIt mid;
@@ -72,7 +95,7 @@ namespace va {
 					mid = first;
 					step = len / 2;
 					mid += step;
-					if (m_key_cmp(key_of(*mid), key)) {
+					if (m_key_cmp(m_extract(*mid), key)) {
 						first = ++mid;
 						len -= step + 1;
 					}
@@ -82,9 +105,8 @@ namespace va {
 				return first;
 			}
 
-			template <class RndIt>
-			RndIt priv_upper_bound(RndIt first, RndIt last, const key_type& key) const {
-				ExtractKey key_of;
+			template <class RndIt, class Key>
+			RndIt priv_upper_bound(RndIt first, RndIt last, const Key& key) const {
 				std::iterator_traits<RndIt>::difference_type len, step;
 				len = last - first;
 				RndIt mid;
@@ -92,7 +114,7 @@ namespace va {
 					mid = first;
 					step = len / 2;
 					mid += step;
-					if (!m_key_cmp(key, key_of(*mid))) {
+					if (!m_key_cmp(key, m_extract(*mid))) {
 						first = ++mid;
 						len -= step + 1;
 					}
@@ -108,15 +130,12 @@ namespace va {
 
 			template <class... Args>
 			std::pair<iterator, bool> emplace_unique(Args&& ...args) {
-				ExtractKey key_of;
-				EquivalenceRelation is_equal;
-
 				m_data.emplace_back(std::forward<Args>(args)...);
 				auto last = std::prev(end());
-				auto lower = priv_lower_bound(begin(), last, key_of(*last));
+				auto lower = priv_lower_bound(begin(), last, m_extract(*last));
 				if (lower == last)
 					return { lower, true };
-				else if (is_equal(key_of(*lower), key_of(*last))) {
+				else if (m_equal(m_extract(*lower), m_extract(*last))) {
 					m_data.pop_back();
 					return { lower, false };
 				}
@@ -128,9 +147,6 @@ namespace va {
 			iterator emplace_hint_unique(const_iterator hint, Args&& ...args) {
 				assert(iterator_in_range(hint) && "Iterator out of range!");
 
-				ExtractKey key_of;
-				EquivalenceRelation is_equal;
-
 				difference_type step = hint - cbegin();
 				m_data.emplace_back(std::forward<Args>(args)...);
 
@@ -141,13 +157,13 @@ namespace va {
 					if (pos == begin() || m_val_cmp(*std::prev(pos), *last))
 						return std::rotate(pos, last, end());
 					iterator prev = std::prev(pos);
-					if (is_equal(key_of(*prev), key_of(*last))) {
+					if (m_equal(m_extract(*prev), m_extract(*last))) {
 						m_data.pop_back();
 						return prev;
 					}
 					else {
-						auto lower = priv_lower_bound(begin(), prev, key_of(*last));
-						if (is_equal(key_of(*lower), key_of(*last))) {
+						auto lower = priv_lower_bound(begin(), prev, m_extract(*last));
+						if (m_equal(m_extract(*lower), m_extract(*last))) {
 							m_data.pop_back();
 							return lower;
 						}
@@ -156,10 +172,10 @@ namespace va {
 					}
 				}
 				else {
-					auto lower = priv_lower_bound(pos, last, key_of(*last));
+					auto lower = priv_lower_bound(pos, last, m_extract(*last));
 					if (lower == last)
 						return lower;
-					else if (is_equal(key_of(*lower), key_of(*last))) {
+					else if (m_equal(m_extract(*lower), m_extract(*last))) {
 						m_data.pop_back();
 						return lower;
 					}
@@ -170,18 +186,14 @@ namespace va {
 
 			template <class... Args>
 			iterator emplace_common(Args&& ...args) {
-				ExtractKey key_of;
 				m_data.emplace_back(std::forward<Args>(args)...);
-				auto upper = priv_upper_bound(begin(), std::prev(end()), key_of(m_data.back()));
+				auto upper = priv_upper_bound(begin(), std::prev(end()), m_extract(m_data.back()));
 				return std::rotate(upper, std::prev(end()), end());
 			}
 
 			template <class... Args>
 			iterator emplace_hint_common(const_iterator hint, Args&& ...args) {
 				assert(iterator_in_range(hint) && "Iterator out of range!");
-
-				ExtractKey key_of;
-				EquivalenceRelation is_equal;
 
 				difference_type step = hint - cbegin();
 				m_data.emplace_back(std::forward<Args>(args)...);
@@ -192,13 +204,16 @@ namespace va {
 				if (pos == last || m_val_cmp(*last, *pos)) {
 					if (pos == begin() 
 						|| m_val_cmp(*std::prev(pos), *last) 
-						|| is_equal(key_of(*std::prev(pos)), key_of(*last)))
+						|| m_equal(m_extract(*std::prev(pos)), m_extract(*last)))
 						return std::rotate(pos, last, end());
 					else
-						return std::rotate(priv_upper_bound(begin(), std::prev(pos), key_of(*last)), last, end());
+						return std::rotate(
+							priv_upper_bound(begin(), std::prev(pos), m_extract(*last)), 
+							last, 
+							end());
 				}
 				else {
-					auto upper = priv_upper_bound(pos, last, key_of(*last));
+					auto upper = priv_upper_bound(pos, last, m_extract(*last));
 					return std::rotate(upper, last, end());
 				}
 			}
@@ -212,6 +227,7 @@ namespace va {
 			explicit ordered_container(const Compare& comp, const Allocator& alloc = Allocator())
 				: m_key_cmp(comp)
 				, m_val_cmp(comp)
+				, m_equal(comp)
 				, m_data(alloc) {}
 
 			explicit ordered_container(const Allocator& alloc)
@@ -297,8 +313,8 @@ namespace va {
 			// modifiers
 			void clear() noexcept { m_data.clear(); }
 
-			auto insert(const value_type& value) { return emplace(value); }
-			auto insert(value_type&& value) { return emplace(std::move(value)); }
+			emplace_return_type insert(const value_type& value) { return emplace(value); }
+			emplace_return_type insert(value_type&& value) { return emplace(std::move(value)); }
 
 			iterator insert(iterator hint, const value_type& value) { return emplace_hint(hint, value); }
 			iterator insert(const_iterator hint, const value_type& value) { return emplace_hint(hint, value); }
@@ -313,7 +329,7 @@ namespace va {
 			void insert(std::initializer_list<value_type> list) { insert(list.begin(), list.end()); }
 
 			template <class... Args>
-			auto emplace(Args&&... args) {
+			emplace_return_type emplace(Args&&... args) {
 				if constexpr (AllowDuplicates) {
 					return emplace_common(std::forward<Args>(args)...);
 				}
@@ -323,7 +339,7 @@ namespace va {
 			}
 
 			template <class... Args>
-			auto emplace_hint(const_iterator hint, Args&&... args) {
+			iterator emplace_hint(const_iterator hint, Args&&... args) {
 				if constexpr (AllowDuplicates) {
 					return emplace_hint_common(hint, std::forward<Args>(args)...);
 				}
@@ -363,28 +379,64 @@ namespace va {
 				return range.second - range.first;
 			}
 
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, size_type>
+				count(const Key& key) const {
+				auto range = equal_range(key);
+				return range.second - range.first;
+			}
+
 			iterator find(const key_type& key) {
-				EquivalenceRelation is_equal;
-				ExtractKey key_of;
 				auto lower = lower_bound(key);
-				return lower != end() && is_equal(key_of(*lower), key) ? lower : end();
+				return lower != end() && m_equal(m_extract(*lower), key) ? lower : end();
 			}
 
 			const_iterator find(const key_type& key) const {
-				EquivalenceRelation is_equal;
-				ExtractKey key_of;
 				auto lower = lower_bound(key);
-				return lower != end() && is_equal(key_of(*lower), key) ? lower : end();
+				return lower != end() && m_equal(m_extract(*lower), key) ? lower : end();
+			}
+
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
+				find(const Key& key) {
+				auto lower = lower_bound(key);
+				return lower != end() && m_equal(m_extract(*lower), key) ? lower : end();
+			}
+
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
+				find(const Key& key) const {
+				auto lower = lower_bound(key);
+				return lower != end() && m_equal(m_extract(*lower), key) ? lower : end();
 			}
 
 			bool contains(const key_type& key) const {
 				return find(key) != end();
 			}
 
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, bool>
+				contains(const Key& key) const {
+				return find(key) != end();
+			}
+
 			std::pair<iterator, iterator> equal_range(const key_type& key) {
 				return { lower_bound(key), upper_bound(key) };
 			}
+
 			std::pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
+				return { lower_bound(key), upper_bound(key) };
+			}
+
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, std::pair<iterator, iterator>>
+				equal_range(const Key& key) {
+				return { lower_bound(key), upper_bound(key) };
+			}
+			
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, std::pair<const_iterator, const_iterator>>
+				equal_range(const Key& key) const {
 				return { lower_bound(key), upper_bound(key) };
 			}
 
@@ -396,11 +448,35 @@ namespace va {
 				return priv_lower_bound(begin(), end(), key); 
 			}
 
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
+				lower_bound(const Key& key) {
+				return priv_lower_bound(begin(), end(), key);
+			}
+
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
+				lower_bound(const Key& key) const {
+				return priv_lower_bound(begin(), end(), key);
+			}
+
 			iterator upper_bound(const key_type& key) {
 				return priv_upper_bound(begin(), end(), key); 
 			}
 
 			const_iterator upper_bound(const key_type& key) const {
+				return priv_upper_bound(begin(), end(), key);
+			}
+
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
+				upper_bound(const Key& key) {
+				return priv_upper_bound(begin(), end(), key);
+			}
+
+			template <class Key>
+			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
+				upper_bound(const Key& key) const {
 				return priv_upper_bound(begin(), end(), key);
 			}
 
@@ -410,10 +486,10 @@ namespace va {
 
 		};
 
-		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		template <class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
 		bool operator==(
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
 		{
 			auto comp = lhs.value_comp();
 			auto equal = [&comp](const auto& lhs, const auto& rhs) {
@@ -422,43 +498,43 @@ namespace va {
 			return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), equal);
 		}
 
-		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		template <class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
 		bool operator!=(
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
 		{
 			return !(lhs == rhs);
 		}
 
-		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		template <class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
 		bool operator<(
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
 		{
 			return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), lhs.value_comp());
 		}
 
-		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		template <class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
 		bool operator<=(
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
 		{
 			return !(rhs < lhs);
 		}
 		
 		
-		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		template <class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
 		bool operator>(
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
 		{
 			return rhs < lhs;
 		}
 
-		template <class Key, class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
+		template <class Value, class Compare, class Allocator, class ExtractKey, bool AllowDuplicates>
 		bool operator>=(
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
-			const ordered_container<Key, Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& lhs,
+			const ordered_container<Value, Compare, Allocator, ExtractKey, AllowDuplicates>& rhs)
 		{
 			return !(lhs < rhs);
 		}

@@ -12,7 +12,6 @@ namespace va {
 	> class ordered_set 
 		: public detail::ordered_container
 					<
-						Key, // key of value
 						Key, // container value
 						Compare, // key comparator
 						Allocator, // container allocator
@@ -22,7 +21,6 @@ namespace va {
 	{
 		using base_type = detail::ordered_container
 							<
-								Key, // key of value
 								Key, // container value
 								Compare, // key comparator
 								Allocator, // container allocator

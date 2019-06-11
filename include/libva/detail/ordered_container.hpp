@@ -87,7 +87,7 @@ namespace va {
 			using emplace_return_type = std::conditional_t<AllowDuplicates, iterator, std::pair<iterator, bool>>;
 
 			template <class RndIt, class Key>
-			RndIt priv_lower_bound(RndIt first, RndIt last, const Key& key) const {
+			RndIt impl_lower_bound(RndIt first, RndIt last, const Key& key) const {
 				std::iterator_traits<RndIt>::difference_type len, step;
 				len = last - first;
 				RndIt mid;
@@ -106,7 +106,7 @@ namespace va {
 			}
 
 			template <class RndIt, class Key>
-			RndIt priv_upper_bound(RndIt first, RndIt last, const Key& key) const {
+			RndIt impl_upper_bound(RndIt first, RndIt last, const Key& key) const {
 				std::iterator_traits<RndIt>::difference_type len, step;
 				len = last - first;
 				RndIt mid;
@@ -132,7 +132,7 @@ namespace va {
 			std::pair<iterator, bool> emplace_unique(Args&& ...args) {
 				m_data.emplace_back(std::forward<Args>(args)...);
 				auto last = std::prev(end());
-				auto lower = priv_lower_bound(begin(), last, m_extract(*last));
+				auto lower = impl_lower_bound(begin(), last, m_extract(*last));
 				if (lower == last)
 					return { lower, true };
 				else if (m_equal(m_extract(*lower), m_extract(*last))) {
@@ -162,7 +162,7 @@ namespace va {
 						return prev;
 					}
 					else {
-						auto lower = priv_lower_bound(begin(), prev, m_extract(*last));
+						auto lower = impl_lower_bound(begin(), prev, m_extract(*last));
 						if (m_equal(m_extract(*lower), m_extract(*last))) {
 							m_data.pop_back();
 							return lower;
@@ -172,7 +172,7 @@ namespace va {
 					}
 				}
 				else {
-					auto lower = priv_lower_bound(pos, last, m_extract(*last));
+					auto lower = impl_lower_bound(pos, last, m_extract(*last));
 					if (lower == last)
 						return lower;
 					else if (m_equal(m_extract(*lower), m_extract(*last))) {
@@ -187,7 +187,7 @@ namespace va {
 			template <class... Args>
 			iterator emplace_common(Args&& ...args) {
 				m_data.emplace_back(std::forward<Args>(args)...);
-				auto upper = priv_upper_bound(begin(), std::prev(end()), m_extract(m_data.back()));
+				auto upper = impl_upper_bound(begin(), std::prev(end()), m_extract(m_data.back()));
 				return std::rotate(upper, std::prev(end()), end());
 			}
 
@@ -208,12 +208,12 @@ namespace va {
 						return std::rotate(pos, last, end());
 					else
 						return std::rotate(
-							priv_upper_bound(begin(), std::prev(pos), m_extract(*last)), 
+							impl_upper_bound(begin(), std::prev(pos), m_extract(*last)), 
 							last, 
 							end());
 				}
 				else {
-					auto upper = priv_upper_bound(pos, last, m_extract(*last));
+					auto upper = impl_upper_bound(pos, last, m_extract(*last));
 					return std::rotate(upper, last, end());
 				}
 			}
@@ -448,43 +448,43 @@ namespace va {
 			}
 
 			iterator lower_bound(const key_type& key) {
-				return priv_lower_bound(begin(), end(), key); 
+				return impl_lower_bound(begin(), end(), key); 
 			}
 
 			const_iterator lower_bound(const key_type& key) const {
-				return priv_lower_bound(begin(), end(), key); 
+				return impl_lower_bound(begin(), end(), key); 
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
 				lower_bound(const Key& key) {
-				return priv_lower_bound(begin(), end(), key);
+				return impl_lower_bound(begin(), end(), key);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
 				lower_bound(const Key& key) const {
-				return priv_lower_bound(begin(), end(), key);
+				return impl_lower_bound(begin(), end(), key);
 			}
 
 			iterator upper_bound(const key_type& key) {
-				return priv_upper_bound(begin(), end(), key); 
+				return impl_upper_bound(begin(), end(), key); 
 			}
 
 			const_iterator upper_bound(const key_type& key) const {
-				return priv_upper_bound(begin(), end(), key);
+				return impl_upper_bound(begin(), end(), key);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
 				upper_bound(const Key& key) {
-				return priv_upper_bound(begin(), end(), key);
+				return impl_upper_bound(begin(), end(), key);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
 				upper_bound(const Key& key) const {
-				return priv_upper_bound(begin(), end(), key);
+				return impl_upper_bound(begin(), end(), key);
 			}
 
 			// observers

@@ -12,8 +12,8 @@ target_include_directories(${PROJECT_NAME}
 		${PROJECT_SOURCE_DIR}/include
 )
 
-option(PACKAGE_TESTS "Build the tests" ON)
-if (PACKAGE_TESTS)
+option(BUILD_LIBVA_TESTS "Build the tests" ON)
+if (BUILD_LIBVA_TESTS)
 	enable_testing()
 	add_subdirectory(tests)
 endif()

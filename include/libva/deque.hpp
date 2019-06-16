@@ -42,7 +42,7 @@ namespace va {
 			}
 
 			// Returns the physical address of it as if the container was strictly linear
-			pointer physical_position(const deque_iterator& it) const {
+			pointer linear_position(const deque_iterator& it) const {
 				if (it.m_it == 0)
 					return m_data->m_limit;
 				else {
@@ -79,14 +79,13 @@ namespace va {
 			// difference operator
 
 			difference_type operator-(const deque_iterator& it) const {
-				return physical_position(*this) - physical_position(it);
+				return linear_position(*this) - linear_position(it);
 			}
 
 			// pointer-like operators
 
 			reference operator*() const {
-				assert(is_valid() && "Invalid calling iterator!");
-				return *m_it;
+				return *(operator->());
 			}
 
 			pointer operator->() const {
@@ -103,18 +102,9 @@ namespace va {
 			deque_iterator& operator++() {
 				assert(is_valid());
 				assert(m_it && "Increment out of bounds!");
-
-				++m_it;
-				if (m_it == m_data->m_limit) {
-					if (m_data->m_tail == m_data->m_limit)
-						m_it = nullptr;
-					else
-						m_it = m_data->m_head;
-				}
-
+				m_data->increment(m_it);
 				if (m_it == m_data->m_tail)
 					m_it = nullptr;
-
 				return *this;
 			}
 
@@ -129,13 +119,9 @@ namespace va {
 			deque_iterator& operator--() {
 				assert(is_valid());
 				assert(m_it != m_data->m_head && "Decrement out of bounds!");
-
 				if (m_it == nullptr)
 					m_it = m_data->m_tail;
-				if (m_it == m_data->m_data)
-					m_it = m_data->m_limit;
-				--m_it;
-
+				m_data->decrement(m_it);
 				return *this;
 			}
 
@@ -149,13 +135,13 @@ namespace va {
 
 			deque_iterator& operator+=(difference_type n) {
 				assert(is_valid());
-
 				if (n == 0)
 					return *this;
 				else if (n > 0) {
 					assert(m_data->end() - *this >= n && "Increment out of bounds!");
-					difference_type x = (m_data->m_limit - m_it) > n ? n : n - (m_data->capacity());
-					m_it += x;
+					m_it = m_data->increment_by(m_it, n);
+					if (m_it == m_data->m_tail)
+						m_it = nullptr;
 					return *this;
 				}
 				else {
@@ -171,13 +157,13 @@ namespace va {
 
 			deque_iterator& operator-=(difference_type n) {
 				assert(is_valid());
-
 				if (n == 0)
 					return *this;
 				else if (n > 0) {
 					assert(*this - m_data->begin() >= n && "Decrement out of bounds!");
-					difference_type x = (m_it - m_data->m_data) > n ? n : n - (m_data->capacity());
-					m_it -= x;
+					if (m_it == nullptr)
+						m_it = m_data->m_tail;
+					m_it = m_data->decrement_by(m_it, n);
 					return *this;
 				}
 				else {
@@ -204,7 +190,7 @@ namespace va {
 			bool operator<(const deque_iterator& it) const {
 				assert(is_valid() && "Invalid calling iterator!");
 				assert(is_compatible(it) && "Incompatible iterator!");
-				return physical_position(*this) < physical_position(it);
+				return linear_position(*this) < linear_position(it);
 			}
 
 			bool operator<=(const deque_iterator& it) const {
@@ -321,46 +307,28 @@ namespace va {
 		// element access
 
 		reference at(size_type index) {
-			assert(!empty());
-			if (!valid_index(index))
-				throw std::out_of_range("Index out of range!");
-			pointer p = m_head + index;
-			if (p >= m_limit)
-				p = m_data + (p - m_limit);
-			return *p;
+			return const_cast<reference>(const_cast<const deque*>(this)->at(index));
 		}
 
 		const_reference at(size_type index) const {
 			assert(!empty());
 			if (!valid_index(index))
 				throw std::out_of_range("Index out of range!");
-			pointer p = m_head + index;
-			if (p >= m_limit)
-				p = m_data + (p - m_limit);
-			return *p;
+			return (*this)[index];
 		}
 
 		reference operator[](size_type index) {
-			assert(!empty());
-			assert(valid_index(index));
-			pointer p = m_head + index;
-			if (p >= m_limit)
-				p = m_data + (p - m_limit);
-			return *p;
+			return const_cast<reference>((*const_cast<const deque*>(this))[index]);
 		}
 
 		const_reference operator[](size_type index) const {
 			assert(!empty());
 			assert(valid_index(index));
-			pointer p = m_head + index;
-			if (p >= m_limit)
-				p = m_data + (p - m_limit);
-			return *p;
+			return *increment_by(m_head, index);
 		}
 
 		reference front() { 
-			assert(!empty()); 
-			return *m_head; 
+			return const_cast<reference>(const_cast<const deque*>(this)->front());
 		}
 
 		const_reference front() const { 
@@ -369,8 +337,7 @@ namespace va {
 		}
 
 		reference back() { 
-			assert(!empty());
-			return *std::prev((m_tail == m_data ? m_limit : m_tail));
+			return const_cast<reference>(const_cast<const deque*>(this)->back());
 		}
 
 		const_reference back() const {
@@ -408,10 +375,10 @@ namespace va {
 
 		iterator insert(const_iterator pos, const value_type& value);
 		iterator insert(const_iterator pos, value_type&& value);
-		iterator insert(iterator pos, size_type n, const value_type& value);
+		iterator insert(const_iterator pos, size_type n, const value_type& value);
 
 		template <class InIt>
-		iterator insert(iterator pos, InIt first, InIt last);
+		iterator insert(const_iterator pos, InIt first, InIt last);
 
 		iterator insert(const_iterator pos, std::initializer_list<value_type> list);
 
@@ -457,6 +424,29 @@ namespace va {
 
 		bool valid_index(size_type index) const noexcept {
 			return index < m_size;
+		}
+		
+		template <class Pointer>
+		void increment(Pointer& p) const noexcept {
+			if (++p == m_limit)
+				p = m_data;
+		}
+
+		template <class Pointer>
+		Pointer increment_by(Pointer p, difference_type n) const noexcept {
+			return p + ((m_limit - p) > n ? n : n - (m_limit - m_data));
+		}
+
+		template <class Pointer>
+		void decrement(Pointer& p) const noexcept {
+			if (p == m_data)
+				p = m_limit;
+			--p;
+		}
+
+		template <class Pointer>
+		Pointer decrement_by(Pointer p, difference_type n) const noexcept {
+			return p - ((p - m_data) > n ? n : n - (m_limit - m_data));
 		}
 
 		// Memory management

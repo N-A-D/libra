@@ -321,7 +321,6 @@ namespace va {
 			emplace_return_type insert(const value_type& value) { return emplace(value); }
 			emplace_return_type insert(value_type&& value) { return emplace(std::move(value)); }
 
-			iterator insert(iterator hint, const value_type& value) { return emplace_hint(hint, value); }
 			iterator insert(const_iterator hint, const value_type& value) { return emplace_hint(hint, value); }
 			iterator insert(const_iterator hint, value_type&& value) { return emplace_hint(hint, std::move(value)); }
 
@@ -353,7 +352,6 @@ namespace va {
 				}
 			}
 
-			iterator erase(iterator pos) { return m_data.erase(pos); }
 			iterator erase(const_iterator pos) { return m_data.erase(pos); }
 			iterator erase(const_iterator first, const_iterator last) { 
 				return m_data.erase(first, last);

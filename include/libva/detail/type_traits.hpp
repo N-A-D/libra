@@ -23,7 +23,7 @@ namespace va {
 		template <
 			class Key,
 			class Compare,
-			class IsTransparent = void
+			class = void
 		> struct is_transparent
 			: std::false_type {};
 

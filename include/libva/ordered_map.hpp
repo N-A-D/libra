@@ -100,11 +100,7 @@ namespace va {
 
 		// element access
 		mapped_type& at(const Key& key) {
-			auto it = find(key);
-			if (it == end())
-				throw std::out_of_range("No such element exists with the given key!");
-			else
-				return it->second;
+			return const_cast<mapped_type&>(const_cast<const ordered_map*>(this)->at(key));
 		}
 
 		const mapped_type& at(const Key& key) const {

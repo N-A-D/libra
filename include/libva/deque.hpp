@@ -19,23 +19,43 @@ namespace va {
 			using value_type = typename Deque::value_type;
 			using difference_type = typename Deque::difference_type;
 			using reference = std::conditional_t
-								<
-									IsConst,
-									typename Deque::const_reference,
-									typename Deque::reference
-								>;
+				<
+					IsConst,
+					typename Deque::const_reference,
+					typename Deque::reference
+				>;
 			using pointer = std::conditional_t
-								<
-									IsConst,
-									typename Deque::const_pointer,
-									typename Deque::pointer
-								>;
+				<
+					IsConst,
+					typename Deque::const_pointer,
+					typename Deque::pointer
+				>;
 
 		private:
 
+			bool is_valid() const noexcept {
+				return m_data != nullptr;
+			}
+
+			bool is_compatible(const deque_iterator& it) const {
+				return m_data == it.m_data;
+			}
+
+			// Returns the physical address of it as if the container was strictly linear
+			pointer physical_position(const deque_iterator& it) const {
+				if (it.m_it == 0)
+					return m_data->m_limit;
+				else {
+					if (it.m_it < m_data->m_head)
+						return it.m_it + (m_data->m_limit - m_data->m_head);
+					else
+						return m_data->m_data + (it.m_it - m_data->m_head);
+				}
+			}
+
 			const Deque* m_data = nullptr;
 			pointer m_it = nullptr;
-			
+
 		public:
 
 			deque_iterator() = default;
@@ -43,7 +63,7 @@ namespace va {
 			deque_iterator(const Deque* data, pointer it)
 				: m_data(data), m_it(it) {}
 
-			// nonconst to const iterator
+			// non const to const iterator
 			deque_iterator(const deque_iterator<Deque, false>& itr)
 				: m_data(itr.m_data)
 				, m_it(itr.m_it) {}
@@ -55,50 +75,152 @@ namespace va {
 				}
 				return *this;
 			}
-			
+
 			// difference operator
 
-			difference_type operator-(const deque_iterator& it) const;
+			difference_type operator-(const deque_iterator& it) const {
+				return physical_position(*this) - physical_position(it);
+			}
 
 			// pointer-like operators
 
-			reference operator*() const;
-			pointer operator->() const;
-			reference operator[](difference_type n) const;
+			reference operator*() const {
+				assert(is_valid() && "Invalid calling iterator!");
+				return *m_it;
+			}
+
+			pointer operator->() const {
+				assert(is_valid() && "Invalid calling iterator!");
+				return m_it;
+			}
+
+			reference operator[](difference_type n) const {
+				return *(*this + n);
+			}
 
 			// increment
 
-			deque_iterator& operator++();
-			deque_iterator& operator++(int);
+			deque_iterator& operator++() {
+				assert(is_valid());
+				assert(m_it && "Increment out of bounds!");
+
+				++m_it;
+				if (m_it == m_data->m_limit) {
+					if (m_data->m_tail == m_data->m_limit)
+						m_it = nullptr;
+					else
+						m_it = m_data->m_head;
+				}
+
+				if (m_it == m_data->m_tail)
+					m_it = nullptr;
+
+				return *this;
+			}
+
+			deque_iterator operator++(int) {
+				deque_iterator tmp(*this);
+				++*this;
+				return tmp;
+			}
 
 			// decrement
 
-			deque_iterator& operator--();
-			deque_iterator& operator--(int);
+			deque_iterator& operator--() {
+				assert(is_valid());
+				assert(m_it != m_data->m_head && "Decrement out of bounds!");
+
+				if (m_it == nullptr)
+					m_it = m_data->m_tail;
+				if (m_it == m_data->m_data)
+					m_it = m_data->m_limit;
+				--m_it;
+
+				return *this;
+			}
+
+			deque_iterator operator--(int) {
+				deque_iterator tmp(*this);
+				--*this;
+				return tmp;
+			}
 
 			// addition
 
-			deque_iterator& operator+=(difference_type n);
-			deque_iterator& operator+(difference_type n) const;
+			deque_iterator& operator+=(difference_type n) {
+				assert(is_valid());
+
+				if (n == 0)
+					return *this;
+				else if (n > 0) {
+					assert(m_data->end() - *this >= n && "Increment out of bounds!");
+					difference_type x = (m_data->m_limit - m_it) > n ? n : n - (m_data->capacity());
+					m_it += x;
+					return *this;
+				}
+				else {
+					return (*this -= -n);
+				}
+			}
+
+			deque_iterator operator+(difference_type n) const {
+				return deque_iterator(*this) += n;
+			}
 
 			// subtraction
 
-			deque_iterator& operator-=(difference_type n);
-			deque_iterator& operator-(difference_type n) const;
+			deque_iterator& operator-=(difference_type n) {
+				assert(is_valid());
+
+				if (n == 0)
+					return *this;
+				else if (n > 0) {
+					assert(*this - m_data->begin() >= n && "Decrement out of bounds!");
+					difference_type x = (m_it - m_data->m_data) > n ? n : n - (m_data->capacity());
+					m_it -= x;
+					return *this;
+				}
+				else {
+					return (*this += -n);
+				}
+			}
+
+			deque_iterator operator-(difference_type n) const {
+				return deque_iterator(*this) -= n;
+			}
 
 			// equality
 
-			bool operator==(const deque_iterator& it) const;
-			bool operator!=(const deque_iterator& it) const;
+			bool operator==(const deque_iterator& it) const {
+				assert(is_valid() && "Invalid calling iterator!");
+				assert(is_compatible(it) && "Incompatible iterators!");
+				return m_it == it.m_it;
+			}
 
-			bool operator<(const deque_iterator& it) const;
-			bool operator<=(const deque_iterator& it) const;
+			bool operator!=(const deque_iterator& it) const {
+				return !(*this == it);
+			}
 
-			bool operator>(const deque_iterator& it) const;
-			bool operator>=(const deque_iterator& it) const;
+			bool operator<(const deque_iterator& it) const {
+				assert(is_valid() && "Invalid calling iterator!");
+				assert(is_compatible(it) && "Incompatible iterator!");
+				return physical_position(*this) < physical_position(it);
+			}
+
+			bool operator<=(const deque_iterator& it) const {
+				return !(it < *this);
+			}
+
+			bool operator>(const deque_iterator& it) const {
+				return it < *this;
+			}
+
+			bool operator>=(const deque_iterator& it) const {
+				return !(*this < it);
+			}
 
 		};
-
+		
 	}
 
 	template <
@@ -116,8 +238,8 @@ namespace va {
 		using const_reference        = const value_type&;
 		using pointer                = typename alloc_traits::pointer;
 		using const_pointer          = typename alloc_traits::const_pointer;
-		using iterator               = detail::deque_iterator<deque<T, Allocator>>;
-		using const_iterator         = detail::deque_iterator<deque<T, Allocator>, true>;
+		using iterator               = detail::deque_iterator<deque>;
+		using const_iterator         = detail::deque_iterator<deque, true>;
 		using reverse_iterator       = std::reverse_iterator<iterator>;
 		using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -258,21 +380,21 @@ namespace va {
 
 		// iterators
 
-		iterator begin() noexcept;
-		const_iterator begin() const noexcept;
-		const_iterator cbegin() const noexcept;
+		iterator begin() noexcept { return iterator(this, (empty() ? nullptr : m_head)); }
+		const_iterator begin() const noexcept { return const_iterator(this, (empty() ? nullptr : m_head)); }
+		const_iterator cbegin() const noexcept { return const_iterator(this, (empty() ? nullptr : m_head)); }
 
-		iterator end() noexcept;
-		const_iterator end() const noexcept;
-		const_iterator cend() const noexcept;
+		iterator end() noexcept { return iterator(this, nullptr); }
+		const_iterator end() const noexcept { return const_iterator(this, nullptr); }
+		const_iterator cend() const noexcept { return const_iterator(this, nullptr); }
 
-		reverse_iterator rbegin() noexcept;
-		const_reverse_iterator rbegin() const noexcept;
-		const_reverse_iterator crbegin() const noexcept;
+		reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+		const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+		const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-		reverse_iterator rend() noexcept;
-		const_reverse_iterator rend() const noexcept;
-		const_reverse_iterator crend() const noexcept;
+		reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
+		const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+		const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
 		// capacity
 		bool empty() const noexcept { return size() == 0; }

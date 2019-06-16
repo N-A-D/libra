@@ -2,30 +2,11 @@
 
 #include <vector>
 #include <cassert>
-#include <iterator>
 #include <algorithm>
-#include <type_traits>
+#include "type_traits.hpp"
 
 namespace va {
 	namespace detail {
-
-		template <
-			class Key,
-			class Compare,
-			class IsTransparent = void
-		> struct is_transparent 
-			: std::false_type {};
-
-		template <
-			class Key,
-			class Compare
-		> struct is_transparent<Key, Compare, std::void_t<typename Compare::is_transparent>> 
-			: std::true_type {};
-
-		template <
-			class Key,
-			class Compare
-		> constexpr bool is_transparent_v = is_transparent<Key, Compare>::value;
 
 		template <
 			class Value,

@@ -232,7 +232,7 @@ namespace va {
 		friend class iterator;
 		friend class const_iterator;
 
-		// constructor
+		// constructors
 		deque() : deque(Allocator()) {}
 
 		explicit deque(const Allocator& alloc)
@@ -272,8 +272,33 @@ namespace va {
 			initialize(other.begin(), other.end());
 		}
 
-		deque(deque&& other);
-		deque(deque&& other, const Allocator& alloc);
+		deque(deque&& other)
+			: m_data(other.m_data)
+			, m_limit(other.m_limit)
+			, m_head(other.m_head)
+			, m_tail(other.m_tail)
+			, m_size(other.m_size)
+			, m_alloc(std::move(other.m_alloc))
+		{
+			other.initialize();
+		}
+
+		deque(deque&& other, const Allocator& alloc)
+			: deque(alloc) 
+		{
+			if constexpr (alloc_traits::is_always_equal::value) {
+				m_data = other.m_data;
+				m_limit = other.m_limit;
+				m_head = other.m_head;
+				m_tail = other.m_tail;
+				m_size = other.m_size;
+				other.initialize();
+			}
+			else {
+				initialize(std::move_iterator(other.begin()), std::move_iterator(other.end()));
+				other.initialize();
+			}
+		}
 
 		deque(std::initializer_list<value_type> list, const Allocator& alloc = Allocator())
 			: deque(list.begin(), list.end(), alloc) {}
@@ -285,7 +310,11 @@ namespace va {
 
 		deque& operator=(const deque& other);
 		deque& operator=(deque&& other) noexcept(alloc_traits::is_always_equal::value);
-		deque& operator=(std::initializer_list<value_type> list);
+
+		deque& operator=(std::initializer_list<value_type> list) {
+			assign(list);
+			return *this;
+		}
 
 		void assign(size_type n, const value_type& value) {
 			uninitialize();
@@ -347,9 +376,9 @@ namespace va {
 
 		// iterators
 
-		iterator begin() noexcept { return iterator(this, (empty() ? nullptr : m_head)); }
-		const_iterator begin() const noexcept { return const_iterator(this, (empty() ? nullptr : m_head)); }
-		const_iterator cbegin() const noexcept { return const_iterator(this, (empty() ? nullptr : m_head)); }
+		iterator begin() noexcept { return iterator(this, m_head); }
+		const_iterator begin() const noexcept { return const_iterator(this, m_head); }
+		const_iterator cbegin() const noexcept { return const_iterator(this, m_head); }
 
 		iterator end() noexcept { return iterator(this, nullptr); }
 		const_iterator end() const noexcept { return const_iterator(this, nullptr); }
@@ -370,8 +399,16 @@ namespace va {
 		size_type max_size() const noexcept { return alloc_traits::max_size(m_alloc); }
 		size_type capacity() const noexcept { return m_limit - m_data; }
 		
+		///////////////////////////////////////////////////////////////////////////////////////
+		//									TODO                                             //
+		void shrink_to_fit();
+
+
 		// modifiers
 		void clear() noexcept { uninitialize(); }
+
+		///////////////////////////////////////////////////////////////////////////////////////
+		//									TODO                                             //
 
 		iterator insert(const_iterator pos, const value_type& value);
 		iterator insert(const_iterator pos, value_type&& value);
@@ -386,7 +423,10 @@ namespace va {
 		iterator emplace(const_iterator pos, Args&&... args);
 
 		iterator erase(const_iterator pos);
-		iterator erase(const_iterator first, iterator last);
+		iterator erase(const_iterator first, const_iterator last);
+
+		//                                                                                   //
+		///////////////////////////////////////////////////////////////////////////////////////
 
 		void push_front(const T& value) { append_front(value); }
 		void push_front(T&& value) { append_front(std::move(value)); }
@@ -405,6 +445,38 @@ namespace va {
 		template <class... Args>
 		void emplace_back(Args&&... args) {
 			append_back(std::forward<Args>(args)...);
+		}
+
+		void resize(size_type n) {
+			if (m_size < n) {
+				while (m_size != n)
+					append_back();
+			}
+			else if (m_size > n) {
+				while (m_size != n)
+					pop_back();
+			}
+		}
+
+		void resize(size_type n, const value_type& value) {
+			if (m_size < n) {
+				while (m_size != n)
+					append_back(value);
+			}
+			else if (m_size > n) {
+				while (m_size != n)
+					pop_back();
+			}
+		}
+
+		void swap(deque& other) noexcept(alloc_traits::is_always_equal::value) {
+			if (this != std::addressof(other)) {
+				std::swap(m_data, other.m_data);
+				std::swap(m_limit, other.m_limit);
+				std::swap(m_head, other.m_head);
+				std::swap(m_tail, other.m_tail);
+				std::swap(m_size, other.m_size);
+			}
 		}
 
 	private:
@@ -571,5 +643,46 @@ namespace va {
 		}
 
 	};
+
+	template <class T, class Allocator>
+	bool operator==(const deque<T, Allocator>& lhs, const deque<T, Allocator>& rhs) {
+		return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+	}
+
+	template <class T, class Allocator>
+	bool operator!=(const deque<T, Allocator>& lhs, const deque<T, Allocator>& rhs) {
+		return !(lhs == rhs);
+	}
+
+	template <class T, class Allocator>
+	bool operator<(const deque<T, Allocator>& lhs, const deque<T, Allocator>& rhs) {
+		return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+	}
+
+	template <class T, class Allocator>
+	bool operator<=(const deque<T, Allocator>& lhs, const deque<T, Allocator>& rhs) {
+		return !(rhs < lhs);
+	}
+
+	template <class T, class Allocator>
+	bool operator>(const deque<T, Allocator>& lhs, const deque<T, Allocator>& rhs) {
+		return rhs < lhs;
+	}
+
+	template <class T, class Allocator>
+	bool operator>=(const deque<T, Allocator>& lhs, const deque<T, Allocator>& rhs) {
+		return !(lhs < rhs);
+	}
+
+}
+
+namespace std {
+
+	template <class T, class Allocator>
+	void swap(va::deque<T, Allocator>& lhs, va::deque<T, Allocator>& rhs)
+		noexcept(noexcept(lhs.swap(rhs)))
+	{
+		lhs.swap(rhs);
+	}
 
 }

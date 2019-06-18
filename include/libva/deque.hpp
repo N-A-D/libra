@@ -369,7 +369,7 @@ namespace va {
 
 		const_reference back() const {
 			assert(!empty());
-			return *std::prev((m_tail == m_data ? m_limit : m_tail));
+			return *prev(m_tail);
 		}
 
 		// iterators

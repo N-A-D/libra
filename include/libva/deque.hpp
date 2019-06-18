@@ -514,6 +514,15 @@ namespace va {
 
 		// memory management
 		
+		template <class... Args>
+		void construct_element(pointer pos, Args&&... args) {
+			alloc_traits::construct(m_alloc, pos, std::forward<Args>(args)...);
+		}
+
+		void destroy_element(pointer p) {
+			alloc_traits::destroy(m_alloc, p);
+		}
+
 		void initialize() {
 			m_size = 0;
 			m_data = m_limit = m_head = m_tail = nullptr;
@@ -524,8 +533,7 @@ namespace va {
 			m_data = alloc_traits::allocate(m_alloc, m_size);
 			m_limit = m_data + m_size;
 			std::uninitialized_default_construct(m_data, m_limit);
-			m_head = m_data;
-			m_tail = m_limit;
+			m_head = m_tail = m_data;
 		}
 
 		void initialize(size_type n, const value_type& value) {
@@ -533,8 +541,7 @@ namespace va {
 			m_data = alloc_traits::allocate(m_alloc, m_size);
 			m_limit = m_data + m_size;
 			std::uninitialized_fill(m_data, m_limit, value);
-			m_head = m_data;
-			m_tail = m_limit;
+			m_head = m_tail = m_data;
 		}
 
 		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
@@ -542,28 +549,15 @@ namespace va {
 			m_size = std::distance(first, last);
 			m_data = alloc_traits::allocate(m_alloc, m_size);
 			m_limit = std::uninitialized_copy(first, last, m_data);
-			m_head = m_data;
-			m_tail = m_limit;
+			m_head = m_tail = m_data;
 		}
 
 		void uninitialize() {
 			if (m_data != nullptr) {
-				if (!empty()) {
-					pointer it = m_tail;
-					if (m_tail > m_head) {
-						while (it != m_head)
-							alloc_traits::destroy(m_alloc, --it);
-					}
-					else {
-						while (it != m_data)
-							alloc_traits::destroy(m_alloc, --it);
-						it = m_limit;
-						while (it != m_head)
-							alloc_traits::destroy(m_alloc, --it);
-					}
-				}
+				while (!empty())
+					remove_back();
 				alloc_traits::deallocate(m_alloc, m_data, capacity());
-				initialize();
+				initialize(); // Reinitialize to empty container
 			}
 		}
 
@@ -637,16 +631,7 @@ namespace va {
 			return p - ((p - m_data) >= n ? n : n - (m_limit - m_data));
 		}
 
-		// element construction
-
-		template <class... Args>
-		void construct_element(pointer pos, Args&&... args) {
-			alloc_traits::construct(m_alloc, pos, std::forward<Args>(args)...);
-		}
-
-		void destroy_element(pointer p) {
-			alloc_traits::destroy(m_alloc, p);
-		}
+		// element insertion
 
 		template <class... Args>
 		iterator emplace_at(const_iterator pos, Args&&... args) {

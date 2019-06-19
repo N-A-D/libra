@@ -674,17 +674,21 @@ namespace va {
 
 		iterator remove_at(const_iterator pos) {
 			assert(pos != cend());
-			if (std::next(pos) == end())
+			if (std::next(pos) == end()) {
 				remove_back();
-			if (pos == cbegin())
+				return std::prev(end());
+			}
+			if (pos == cbegin()) {
 				remove_front();
+				return begin();
+			}
 			difference_type off_from_front = pos - cbegin();
 			difference_type off_from_back = cend() - pos;
 			if (off_from_front < off_from_back) { 
 				reverse_iterator it = rbegin() + off_from_back;
 				it = std::rotate(it, it + 1, rend());
 				remove_front();
-				return it.base();
+				return std::next(it.base());
 			}
 			else {
 				iterator it = begin() + off_from_front;

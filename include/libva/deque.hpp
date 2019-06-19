@@ -129,7 +129,9 @@ namespace va {
 
 			deque_iterator& operator+=(difference_type n) {
 				assert(valid());
-				if (n > 0) {
+				if (n == 0)
+					return *this;
+				else if (n > 0) {
 					assert(m_data->end() - *this >= n && "Increment out of bounds!");
 					m_it = m_data->next(m_it, n);
 					if (m_it == m_data->m_tail)
@@ -139,7 +141,6 @@ namespace va {
 				else {
 					return (*this -= -n);
 				}
-				return *this;
 			}
 
 			deque_iterator operator+(difference_type n) const {
@@ -150,7 +151,9 @@ namespace va {
 
 			deque_iterator& operator-=(difference_type n) {
 				assert(valid());
-				if (n > 0) {
+				if (n == 0)
+					return *this;
+				else if (n > 0) {
 					assert(*this - m_data->begin() >= n && "Decrement out of bounds!");
 					if (m_it == nullptr)
 						m_it = m_data->m_tail;
@@ -160,7 +163,6 @@ namespace va {
 				else {
 					return (*this += -n);
 				}
-				return *this;
 			}
 
 			deque_iterator operator-(difference_type n) const {

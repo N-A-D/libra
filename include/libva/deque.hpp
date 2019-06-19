@@ -13,10 +13,9 @@ namespace va {
 			bool IsConst = false
 		> class deque_iterator {
 		public:
-
 			using iterator_category = std::random_access_iterator_tag;
-			using value_type = typename Deque::value_type;
-			using difference_type = typename Deque::difference_type;
+			using value_type        = typename Deque::value_type;
+			using difference_type   = typename Deque::difference_type;
 			using reference = std::conditional_t
 				<
 					IsConst,
@@ -30,26 +29,21 @@ namespace va {
 					typename Deque::pointer
 				>;
 
+			friend class deque_iterator<Deque, !IsConst>;
+
 		private:
 
-			bool is_valid() const noexcept {
+			bool valid() const noexcept {
 				return m_data != nullptr;
 			}
 
-			bool is_compatible(const deque_iterator& it) const {
+			template <bool Constness>
+			bool compatible(const deque_iterator<Deque, Constness>& it) const noexcept {
 				return m_data == it.m_data;
 			}
 
-			// Returns the physical address of it as if the container was strictly linear
-			pointer linear_position(const deque_iterator& it) const {
-				if (it.m_it == 0)
-					return m_data->m_limit;
-				else {
-					if (it.m_it < m_data->m_head)
-						return it.m_it + (m_data->m_limit - m_data->m_head);
-					else
-						return m_data->m_data + (it.m_it - m_data->m_head);
-				}
+			pointer address() const noexcept {
+				return m_data->linear_address(m_it);
 			}
 
 			const Deque* m_data = nullptr;
@@ -77,8 +71,9 @@ namespace va {
 
 			// difference operator
 
-			difference_type operator-(const deque_iterator& it) const {
-				return linear_position(*this) - linear_position(it);
+			template <bool Constness>
+			difference_type operator-(const deque_iterator<Deque, Constness>& it) const {
+				return address() - it.address();
 			}
 
 			// pointer-like operators
@@ -88,7 +83,7 @@ namespace va {
 			}
 
 			pointer operator->() const {
-				assert(is_valid() && "Invalid calling iterator!");
+				assert(valid() && "Invalid calling iterator!");
 				return m_it;
 			}
 
@@ -99,7 +94,7 @@ namespace va {
 			// increment
 
 			deque_iterator& operator++() {
-				assert(is_valid());
+				assert(valid());
 				assert(m_it && "Increment out of bounds!");
 				m_it = m_data->next(m_it);
 				if (m_it == m_data->m_tail)
@@ -116,7 +111,7 @@ namespace va {
 			// decrement
 
 			deque_iterator& operator--() {
-				assert(is_valid());
+				assert(valid());
 				assert(m_it != m_data->m_head && "Decrement out of bounds!");
 				if (m_it == nullptr)
 					m_it = m_data->m_tail;
@@ -133,10 +128,8 @@ namespace va {
 			// addition
 
 			deque_iterator& operator+=(difference_type n) {
-				assert(is_valid());
-				if (n == 0)
-					return *this;
-				else if (n > 0) {
+				assert(valid());
+				if (n > 0) {
 					assert(m_data->end() - *this >= n && "Increment out of bounds!");
 					m_it = m_data->next(m_it, n);
 					if (m_it == m_data->m_tail)
@@ -146,6 +139,7 @@ namespace va {
 				else {
 					return (*this -= -n);
 				}
+				return *this;
 			}
 
 			deque_iterator operator+(difference_type n) const {
@@ -155,10 +149,8 @@ namespace va {
 			// subtraction
 
 			deque_iterator& operator-=(difference_type n) {
-				assert(is_valid());
-				if (n == 0)
-					return *this;
-				else if (n > 0) {
+				assert(valid());
+				if (n > 0) {
 					assert(*this - m_data->begin() >= n && "Decrement out of bounds!");
 					if (m_it == nullptr)
 						m_it = m_data->m_tail;
@@ -168,6 +160,7 @@ namespace va {
 				else {
 					return (*this += -n);
 				}
+				return *this;
 			}
 
 			deque_iterator operator-(difference_type n) const {
@@ -176,31 +169,37 @@ namespace va {
 
 			// equality
 
-			bool operator==(const deque_iterator& it) const {
-				assert(is_valid() && "Invalid calling iterator!");
-				assert(is_compatible(it) && "Incompatible iterators!");
+			template <bool Constness>
+			bool operator==(const deque_iterator<Deque, Constness>& it) const {
+				assert(valid() && "Invalid calling iterator!");
+				assert(compatible(it) && "Incompatible iterators!");
 				return m_it == it.m_it;
 			}
 
-			bool operator!=(const deque_iterator& it) const {
+			template <bool Constness>
+			bool operator!=(const deque_iterator<Deque, Constness>& it) const {
 				return !(*this == it);
 			}
 
-			bool operator<(const deque_iterator& it) const {
-				assert(is_valid() && "Invalid calling iterator!");
-				assert(is_compatible(it) && "Incompatible iterator!");
-				return linear_position(*this) < linear_position(it);
+			template <bool Constness>
+			bool operator<(const deque_iterator<Deque, Constness>& it) const {
+				assert(valid() && "Invalid calling iterator!");
+				assert(compatible(it) && "Incompatible iterator!");
+				return address() < it.address();
 			}
 
-			bool operator<=(const deque_iterator& it) const {
+			template <bool Constness>
+			bool operator<=(const deque_iterator<Deque, Constness>& it) const {
 				return !(it < *this);
 			}
 
-			bool operator>(const deque_iterator& it) const {
+			template <bool Constness>
+			bool operator>(const deque_iterator<Deque, Constness>& it) const {
 				return it < *this;
 			}
 
-			bool operator>=(const deque_iterator& it) const {
+			template <bool Constness>
+			bool operator>=(const deque_iterator<Deque, Constness>& it) const {
 				return !(*this < it);
 			}
 
@@ -629,6 +628,18 @@ namespace va {
 		template <class Pointer>
 		Pointer prev(Pointer p, difference_type n = 1) const noexcept {
 			return p - ((p - m_data) >= n ? n : n - (m_limit - m_data));
+		}
+
+		template <class Pointer>
+		Pointer linear_address(Pointer p) const noexcept {
+			if (p == nullptr)
+				return m_limit;
+			else {
+				if (p < m_head)
+					return p + (m_limit - m_head);
+				else
+					return m_data + (p - m_head);
+			}
 		}
 
 		// element insertion

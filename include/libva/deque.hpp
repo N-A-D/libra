@@ -461,8 +461,10 @@ namespace va {
 		iterator erase(const_iterator pos) { return remove_at(pos); }
 		iterator erase(const_iterator first, const_iterator last) {
 			assert(last != cend() && first != cend());
+			assert(first <= last && "Invalid range!");
+			difference_type off = first - cbegin();
 			if (first == last)
-				return first();
+				return begin() + off;
 			iterator it;
 			while (last != first)
 				it = erase(--last);

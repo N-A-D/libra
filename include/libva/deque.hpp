@@ -776,7 +776,7 @@ namespace va {
 		template <class Pointer>
 		Pointer linear_address(Pointer p) const noexcept {
 			if (p == nullptr)
-				return m_limit;
+				return m_data + m_size;
 			else {
 				if (p < m_head)
 					return p + (m_limit - m_head);

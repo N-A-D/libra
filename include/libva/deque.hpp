@@ -37,8 +37,8 @@ namespace va {
 				return m_data != nullptr;
 			}
 
-			template <bool Constness>
-			bool compatible(const deque_iterator<Deque, Constness>& it) const noexcept {
+			template <bool is_const>
+			bool compatible(const deque_iterator<Deque, is_const>& it) const noexcept {
 				return m_data == it.m_data;
 			}
 
@@ -71,8 +71,8 @@ namespace va {
 
 			// difference operator
 
-			template <bool Constness>
-			difference_type operator-(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			difference_type operator-(const deque_iterator<Deque, is_const>& it) const {
 				return address() - it.address();
 			}
 
@@ -171,37 +171,37 @@ namespace va {
 
 			// equality
 
-			template <bool Constness>
-			bool operator==(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			bool operator==(const deque_iterator<Deque, is_const>& it) const {
 				assert(valid() && "Invalid calling iterator!");
 				assert(compatible(it) && "Incompatible iterators!");
 				return m_it == it.m_it;
 			}
 
-			template <bool Constness>
-			bool operator!=(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			bool operator!=(const deque_iterator<Deque, is_const>& it) const {
 				return !(*this == it);
 			}
 
-			template <bool Constness>
-			bool operator<(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			bool operator<(const deque_iterator<Deque, is_const>& it) const {
 				assert(valid() && "Invalid calling iterator!");
 				assert(compatible(it) && "Incompatible iterator!");
 				return address() < it.address();
 			}
 
-			template <bool Constness>
-			bool operator<=(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			bool operator<=(const deque_iterator<Deque, is_const>& it) const {
 				return !(it < *this);
 			}
 
-			template <bool Constness>
-			bool operator>(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			bool operator>(const deque_iterator<Deque, is_const>& it) const {
 				return it < *this;
 			}
 
-			template <bool Constness>
-			bool operator>=(const deque_iterator<Deque, Constness>& it) const {
+			template <bool is_const>
+			bool operator>=(const deque_iterator<Deque, is_const>& it) const {
 				return !(*this < it);
 			}
 
@@ -231,7 +231,10 @@ namespace va {
 		friend class iterator;
 		friend class const_iterator;
 
-		// constructors
+		////////////////////////////////////////////////////////////////////////////////
+		//                               Constructors                                 //
+		////////////////////////////////////////////////////////////////////////////////
+
 		deque() : deque(Allocator()) {}
 
 		explicit deque(const Allocator& alloc)
@@ -241,32 +244,32 @@ namespace va {
 		}
 
 		explicit deque(size_type n, const Allocator& alloc = Allocator())
-			: deque(alloc)
+			: m_alloc(alloc)
 		{
 			initialize(n);
 		}
 
 		deque(size_type n, const value_type& v, const Allocator& alloc = Allocator())
-			: deque(alloc)
+			: m_alloc(alloc)
 		{
 			initialize(n, v);
 		}
 
 		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
 		deque(InIt first, InIt last, const Allocator& alloc = Allocator())
-			: deque(alloc)
+			: m_alloc(alloc)
 		{
 			initialize(first, last);
 		}
 
 		deque(const deque& other)
-			: deque(alloc_traits::select_on_container_copy_construction(other.get_allocator()))
+			: m_alloc(alloc_traits::select_on_container_copy_construction(other.get_allocator()))
 		{
 			initialize(other.begin(), other.end());
 		}
 
 		deque(const deque& other, const Allocator& alloc)
-			: deque(alloc)
+			: m_alloc(alloc)
 		{
 			initialize(other.begin(), other.end());
 		}
@@ -283,9 +286,9 @@ namespace va {
 		}
 
 		deque(deque&& other, const Allocator& alloc)
-			: deque(alloc) 
+			: m_alloc(alloc)
 		{
-			if constexpr (alloc_traits::is_always_equal::value) {
+			if (alloc_traits::is_always_equal::value || m_alloc == other.get_allocator()) {
 				m_data = other.m_data;
 				m_limit = other.m_limit;
 				m_head = other.m_head;
@@ -294,18 +297,27 @@ namespace va {
 				other.initialize();
 			}
 			else {
-				initialize(std::move_iterator(other.begin()), std::move_iterator(other.end()));
-				other.initialize();
+				initialize(std::move_iterator(other.begin(), other.end()));
 			}
 		}
 
 		deque(std::initializer_list<value_type> list, const Allocator& alloc = Allocator())
 			: deque(list.begin(), list.end(), alloc) {}
 
-		// destructor
-		~deque() { uninitialize(); }
+	
+		////////////////////////////////////////////////////////////////////////////////
+		//                                Destructor                                  //
+		////////////////////////////////////////////////////////////////////////////////
 
-		// assignment
+		~deque()
+		{
+			clear(); // Destroy any elements
+			deallocate_storage(); // Release any allocated storage
+		}
+
+		////////////////////////////////////////////////////////////////////////////////
+		//                                Assignment                                  //
+		////////////////////////////////////////////////////////////////////////////////
 
 		deque& operator=(const deque& other);
 		deque& operator=(deque&& other) noexcept(alloc_traits::is_always_equal::value);
@@ -316,14 +328,16 @@ namespace va {
 		}
 
 		void assign(size_type n, const value_type& value) {
-			uninitialize();
-			initialize(n, value);
+			clear();
+			for (size_type i = 0; i != n; ++i)
+				push_back(value);
 		}
 
 		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
 		void assign(InIt first, InIt last) {
-			uninitialize();
-			initialize(first, last);
+			clear();
+			for (auto it = first; it != last; ++it)
+				push_back(*it);
 		}
 
 		void assign(std::initializer_list<value_type> list) {
@@ -332,7 +346,9 @@ namespace va {
 
 		allocator_type get_allocator() const noexcept { return m_alloc; }
 
-		// element access
+		////////////////////////////////////////////////////////////////////////////////
+		//                              Element access                                //
+		////////////////////////////////////////////////////////////////////////////////
 
 		reference at(size_type index) {
 			return const_cast<reference>(const_cast<const deque*>(this)->at(index));
@@ -373,7 +389,9 @@ namespace va {
 			return *prev(m_tail);
 		}
 
-		// iterators
+		////////////////////////////////////////////////////////////////////////////////
+		//                                Iterators                                   //
+		////////////////////////////////////////////////////////////////////////////////
 
 		iterator begin() noexcept { return iterator(this, m_head); }
 		const_iterator begin() const noexcept { return const_iterator(this, m_head); }
@@ -391,41 +409,45 @@ namespace va {
 		const_reverse_iterator rend() const noexcept { return const_reverse_iterator(cbegin()); }
 		const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-		// capacity
+		
+		////////////////////////////////////////////////////////////////////////////////
+		//                                 Capacity                                   //
+		////////////////////////////////////////////////////////////////////////////////
+
 		bool empty() const noexcept { return size() == 0; }
 		bool full() const noexcept { return capacity() == size(); }
 		size_type size() const noexcept { return m_size; }
 		size_type max_size() const noexcept { return alloc_traits::max_size(m_alloc); }
 		size_type capacity() const noexcept { return m_limit - m_data; }
-		void shrink_to_fit() { release_unused_memory(); }
+		void shrink_to_fit() { contract(); }
 
-		// modifiers
+		////////////////////////////////////////////////////////////////////////////////
+		//                                Modifiers                                   //
+		////////////////////////////////////////////////////////////////////////////////
 
-		void clear() noexcept { uninitialize(); }
+		void clear() noexcept { while (!empty()) pop_back(); }
 
 		iterator insert(const_iterator pos, const value_type& value) { return emplace(pos, value); }
 		iterator insert(const_iterator pos, value_type&& value) { return emplace(pos, std::move(value)); }
 		iterator insert(const_iterator pos, size_type n, const value_type& value) {
+			difference_type off = pos - cbegin();
 			if (n == 0)
-				return end();
-			iterator ret = emplace(pos, value);
-			--n;
-			while (n != 0) {
-				ret = emplace(ret, value);
-				--n;
-			}
-			return ret;
+				return begin() + off;
+			iterator it = begin() + off;
+			for (size_type i = 0; i != n; ++i)
+				it = emplace(it, value);
+			return it;
 		}
 
-		template <class InIt>
-		iterator insert(const_iterator pos, InIt first, InIt last) {
+		template <class BidirIt>
+		iterator insert(const_iterator pos, BidirIt first, BidirIt last) {
+			difference_type off = pos - cbegin();
 			if (first == last)
-				return end();
-			InIt it = last;
-			iterator ret = emplace(pos, --*it);
-			while (it != first)
-				ret = emplace(ret, --*it);
-			return ret;
+				return begin() + off;
+			iterator it = insert(pos, --*last);
+			while (last != first)
+				it = insert(it, --*last);
+			return it;
 		}
 
 		iterator insert(const_iterator pos, std::initializer_list<value_type> list) {
@@ -440,12 +462,11 @@ namespace va {
 		iterator erase(const_iterator first, const_iterator last) {
 			assert(last != cend() && first != cend());
 			if (first == last)
-				return end();
-			const_iterator it = last;
-			iterator ret = erase(--it);
-			while (it != first)
-				ret = erase(--it);
-			return ret;
+				return first();
+			iterator it;
+			while (last != first)
+				it = erase(--last);
+			return it;
 		}
 
 		void push_front(const T& value) { append_front(value); }
@@ -489,16 +510,7 @@ namespace va {
 			}
 		}
 
-		void swap(deque& other) noexcept(alloc_traits::is_always_equal::value) {
-			if (this != std::addressof(other)) {
-				std::swap(m_data, other.m_data);
-				std::swap(m_limit, other.m_limit);
-				std::swap(m_head, other.m_head);
-				std::swap(m_tail, other.m_tail);
-				std::swap(m_size, other.m_size);
-				std::swap(m_alloc, other.m_alloc);
-			}
-		}
+		void swap(deque& other) noexcept(alloc_traits::is_always_equal::value);
 
 	private:
 
@@ -511,140 +523,148 @@ namespace va {
 		size_type m_size = 0;      // the number of physically occupied slots
 		allocator_type m_alloc;
 
+		// NOTE: m_head and m_tail will never be equal to m_limit
+
 	private:
 
-		// memory management
+		////////////////////////////////////////////////////////////////////////////////
+		//                              Memory management                             //
+		////////////////////////////////////////////////////////////////////////////////
 
-		template <class... Args>
-		void construct_element(pointer pos, Args&&... args) {
-			alloc_traits::construct(m_alloc, pos, std::forward<Args>(args)...);
+		// Acquires memory for the container
+		pointer allocate_storage(size_type cap) {
+			return alloc_traits::allocate(m_alloc, cap);
 		}
 
-		void destroy_element(pointer p) {
-			alloc_traits::destroy(m_alloc, p);
-		}
-
-		void initialize() {
-			m_size = 0;
-			m_data = m_limit = m_head = m_tail = nullptr;
-		}
-
-		void initialize(size_type n) {
-			m_size = n;
-			m_data = alloc_traits::allocate(m_alloc, m_size);
-			m_limit = m_data + m_size;
-			std::uninitialized_default_construct(m_data, m_limit);
-			m_head = m_tail = m_data;
-		}
-
-		void initialize(size_type n, const value_type& value) {
-			m_size = n;
-			m_data = alloc_traits::allocate(m_alloc, m_size);
-			m_limit = m_data + m_size;
-			std::uninitialized_fill(m_data, m_limit, value);
-			m_head = m_tail = m_data;
-		}
-
-		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
-		void initialize(InIt first, InIt last) {
-			m_size = std::distance(first, last);
-			m_data = alloc_traits::allocate(m_alloc, m_size);
-			m_limit = std::uninitialized_copy(first, last, m_data);
-			m_head = m_tail = m_data;
-		}
-
-		void uninitialize() {
+		// Frees memory used by the container
+		void deallocate_storage() {
 			if (m_data != nullptr) {
-				while (!empty())
-					remove_back();
 				alloc_traits::deallocate(m_alloc, m_data, capacity());
 				initialize(); // Reinitialize to empty container
 			}
 		}
 
-		void grow() {
+		// Expands the container's capacity
+		// Growth rate is similar to std::vector: 2^N
+		void expand() {
+			static_assert(std::is_nothrow_move_constructible_v<T> || std::is_copy_constructible_v<T>);
+			assert(full());
+			size_type new_size = m_size;
 			size_type new_cap = std::max(2 * capacity(), size_type(1));
-			pointer new_data = alloc_traits::allocate(m_alloc, new_cap);
-			if (m_tail > m_head) {
-				if constexpr (std::is_move_constructible_v<T>)
+			pointer new_data = allocate_storage(new_cap);
+			if constexpr (std::is_nothrow_move_constructible_v<T>) {
+				if (m_tail > m_head) // The container is linear
 					std::uninitialized_move(m_head, m_tail, new_data);
-				else
-					std::uninitialized_copy(m_head, m_tail, new_data);
-			}
-			else {
-				if constexpr (std::is_move_constructible_v<T>) {
+				else {
 					pointer tmp = std::uninitialized_move(m_head, m_limit, new_data);
 					std::uninitialized_move(m_data, m_tail, tmp);
 				}
+				// uninitialized_move calls T's destructor
+				// Since we moved every element over, we only need to free memory
+				deallocate_storage();
+			}
+			else {
+				if (m_tail > m_head) // The container is linear
+					std::uninitialized_copy(m_head, m_tail, new_data);
 				else {
 					pointer tmp = std::uninitialized_copy(m_head, m_limit, new_data);
 					std::uninitialized_copy(m_data, m_tail, tmp);
 				}
+				// uninitialized_copy does not call T's destructor
+				// Since each element is still valid, we need to destroy each of them
+				// On top of that, we also need to free memory
+				clear();
+				deallocate_storage();
 			}
-			size_type new_size = m_size;
-			uninitialize();
 			m_size = new_size;
 			m_data = m_head = new_data;
-			m_tail = m_data + m_size;
+			m_tail = m_head + m_size;
 			m_limit = m_data + new_cap;
+			assert(!full());
 		}
 
-		void release_unused_memory() {
-			if (!full()) {
-				pointer new_data = alloc_traits::allocate(m_alloc, m_size);
-				if (m_tail > m_head) {
-					if constexpr (std::is_move_constructible_v<T>)
-						std::uninitialized_move(m_head, m_tail, new_data);
-					else
-						std::uninitialized_copy(m_head, m_tail, new_data);
-				}
+		// Shrinks the container's memory footprint such that size() == capacity()
+		void contract() {
+			static_assert(std::is_nothrow_move_constructible_v<T> || std::is_copy_constructible_v<T>);
+			if (empty())
+				return;
+			assert(!full());
+			size_type new_size = m_size;
+			pointer new_data = allocate_storage(m_size);
+			if constexpr (std::is_nothrow_move_constructible_v<T>) {
+				if (m_tail > m_head) // The container is linear
+					std::uninitialized_move(m_head, m_tail, new_data);
 				else {
-					if constexpr (std::is_move_constructible_v<T>) {
-						pointer tmp = std::uninitialized_move(m_head, m_limit, new_data);
-						std::uninitialized_move(m_data, m_tail, tmp);
-					}
-					else {
-						pointer tmp = std::uninitialized_copy(m_head, m_limit, new_data);
-						std::uninitialized_copy(m_data, m_tail, tmp);
-					}
+					pointer tmp = std::uninitialized_move(m_head, m_limit, new_data);
+					std::uninitialized_move(m_data, m_tail, tmp);
 				}
-				size_type new_size = m_size;
-				uninitialize();
-				m_size = new_size;
-				m_data = m_head = m_tail = new_data;
-				m_limit = m_data + new_size;
+				// uninitialized_move calls T's destructor
+				// Since we moved every element over, we only need to free memory
+				deallocate_storage();
 			}
-		}
-
-		// helpers
-
-		bool valid_index(size_type index) const noexcept {
-			return index < m_size;
-		}
-
-		template <class Pointer>
-		Pointer next(Pointer p, difference_type n = 1) const noexcept {
-			return p + ((m_limit - p) > n ? n : n - (m_limit - m_data));
-		}
-
-		template <class Pointer>
-		Pointer prev(Pointer p, difference_type n = 1) const noexcept {
-			return p - ((p - m_data) >= n ? n : n - (m_limit - m_data));
-		}
-
-		template <class Pointer>
-		Pointer linear_address(Pointer p) const noexcept {
-			if (p == nullptr)
-				return m_limit;
 			else {
-				if (p < m_head)
-					return p + (m_limit - m_head);
-				else
-					return m_data + (p - m_head);
+				if (m_tail > m_head) // The container is linear
+					std::uninitialized_copy(m_head, m_tail, new_data);
+				else {
+					pointer tmp = std::uninitialized_copy(m_head, m_limit, new_data);
+					std::uninitialized_copy(m_data, m_tail, tmp);
+				}
+				// uninitialized_copy does not call T's destructor
+				// Since each element is still valid, we need to destroy each of them
+				// On top of that, we also need to free memory
+				clear();
+				deallocate_storage();
 			}
+			m_size = new_size;
+			m_data = m_head = m_tail = new_data;
+			m_limit = m_data + m_size;
+			assert(full());
 		}
 
-		// element insertion
+		////////////////////////////////////////////////////////////////////////////////
+		//                              Initialization                                //
+		////////////////////////////////////////////////////////////////////////////////
+
+		// Constructs an empty container
+		void initialize() {
+			m_size = 0;
+			m_data = m_limit = m_head = m_tail = nullptr;
+		}
+
+		// Constructs a container with n default-initialized elements
+		void initialize(size_type n) {
+			static_assert(std::is_default_constructible_v<T>);
+			m_size = n;
+			m_data = allocate_storage(m_size);
+			m_limit = m_data + m_size;
+			std::uninitialized_default_construct(m_data, m_limit);
+			m_head = m_tail = m_data;
+		}
+
+		// Constructs a container with n copy-constructed elements
+		void initialize(size_type n, const value_type& value) {
+			static_assert(std::is_copy_constructible_v<T>);
+			m_size = n;
+			m_data = allocate_storage(m_size);
+			m_limit = m_data + m_size;
+			std::uninitialized_fill(m_data, m_limit, value);
+			m_head = m_tail = m_data;
+		}
+
+		// Constructs a container from the elements of the range [first, last)
+		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
+		void initialize(InIt first, InIt last) {
+			static_assert(std::is_convertible_v<typename std::iterator_traits<InIt>::value_type, value_type>);
+			static_assert(std::is_copy_constructible_v<T>);
+			m_size = std::distance(first, last);
+			m_data = allocate_storage(m_size);
+			m_limit = std::uninitialized_copy(first, last, m_data);
+			m_head = m_tail = m_data;
+		}
+
+		////////////////////////////////////////////////////////////////////////////////
+		//                           Element creation                                 //
+		////////////////////////////////////////////////////////////////////////////////
 
 		template <class... Args>
 		iterator emplace_at(const_iterator pos, Args&&... args) {
@@ -701,15 +721,15 @@ namespace va {
 		template <class... Args>
 		void append_front(Args&&... args) {
 			if (empty() || full())
-				grow();
+				expand();
 			m_head = prev(m_head);
-			construct_element(m_head, std::forward<Args>(args)...);
+			alloc_traits::construct(m_alloc, m_head, std::forward<Args>(args)...);
 			++m_size;
 		}
 
 		void remove_front() {
 			assert(!empty());
-			destroy_element(m_head);
+			alloc_traits::destroy(m_alloc, m_head);
 			m_head = next(m_head);
 			--m_size;
 		}
@@ -717,8 +737,8 @@ namespace va {
 		template <class... Args>
 		void append_back(Args&&... args) {
 			if (empty() || full())
-				grow();
-			construct_element(m_tail, std::forward<Args>(args)...);
+				expand();
+			alloc_traits::construct(m_alloc, m_tail, std::forward<Args>(args)...);
 			m_tail = next(m_tail);
 			++m_size;
 		}
@@ -726,8 +746,39 @@ namespace va {
 		void remove_back() {
 			assert(!empty());
 			m_tail = prev(m_tail);
-			destroy_element(m_tail);
+			alloc_traits::destroy(m_alloc, m_tail);
 			--m_size;
+		}
+
+
+		////////////////////////////////////////////////////////////////////////////////
+		//                                Utilities                                   //
+		////////////////////////////////////////////////////////////////////////////////
+
+		bool valid_index(size_type index) const noexcept {
+			return index < m_size;
+		}
+
+		template <class Pointer>
+		Pointer next(Pointer p, difference_type n = 1) const noexcept {
+			return p + ((m_limit - p) > n ? n : n - (m_limit - m_data));
+		}
+
+		template <class Pointer>
+		Pointer prev(Pointer p, difference_type n = 1) const noexcept {
+			return p - ((p - m_data) >= n ? n : n - (m_limit - m_data));
+		}
+
+		template <class Pointer>
+		Pointer linear_address(Pointer p) const noexcept {
+			if (p == nullptr)
+				return m_limit;
+			else {
+				if (p < m_head)
+					return p + (m_limit - m_head);
+				else
+					return m_data + (p - m_head);
+			}
 		}
 
 	};

@@ -514,7 +514,7 @@ namespace va {
 	private:
 
 		// memory management
-		
+
 		template <class... Args>
 		void construct_element(pointer pos, Args&&... args) {
 			alloc_traits::construct(m_alloc, pos, std::forward<Args>(args)...);
@@ -661,13 +661,13 @@ namespace va {
 			if (off_from_front < off_from_back) {
 				append_front(std::forward<Args>(args)...);
 				reverse_iterator it = rbegin() + off_from_back;
-				it = std::rotate(it, std::prev(rend()), rend());
+				std::rotate(it, std::prev(rend()), rend());
 				return it.base();
 			}
 			else {
 				append_back(std::forward<Args>(args)...);
 				iterator it = begin() + off_from_front;
-				it = std::rotate(it, std::prev(end()), end());
+				std::rotate(it, std::prev(end()), end());
 				return it;
 			}
 		}
@@ -686,13 +686,13 @@ namespace va {
 			difference_type off_from_back = cend() - pos;
 			if (off_from_front < off_from_back) { 
 				reverse_iterator it = rbegin() + off_from_back;
-				it = std::rotate(it, it + 1, rend());
+				std::rotate(it, it + 1, rend());
 				remove_front();
 				return std::next(it.base());
 			}
 			else {
 				iterator it = begin() + off_from_front;
-				it = std::rotate(it, it + 1, end());
+				std::rotate(it, it + 1, end());
 				remove_back();
 				return it;
 			}

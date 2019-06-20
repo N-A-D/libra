@@ -611,8 +611,8 @@ namespace va {
 				size_type new_size = m_size;
 				uninitialize();
 				m_size = new_size;
-				m_data = m_head = new_data;
-				m_limit = m_tail = m_data + new_size;
+				m_data = m_head = m_tail = new_data;
+				m_limit = m_data + new_size;
 			}
 		}
 

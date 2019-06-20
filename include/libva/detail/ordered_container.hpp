@@ -120,8 +120,10 @@ namespace va {
 					m_data.pop_back();
 					return { lower, false };
 				}
-				else
-					return { std::rotate(lower, last, end()), true };
+				else {
+					std::rotate(lower, last, end());
+					return { lower, true };
+				}
 			}
 
 			template <class... Args>
@@ -135,8 +137,10 @@ namespace va {
 				iterator last = std::prev(end());
 
 				if (pos == last || m_val_cmp(*last, *pos)) {
-					if (pos == begin() || m_val_cmp(*std::prev(pos), *last))
-						return std::rotate(pos, last, end());
+					if (pos == begin() || m_val_cmp(*std::prev(pos), *last)) {
+						std::rotate(pos, last, end());
+						return pos;
+					}
 					iterator prev = std::prev(pos);
 					if (m_equal(m_extract(*prev), m_extract(*last))) {
 						m_data.pop_back();
@@ -148,8 +152,10 @@ namespace va {
 							m_data.pop_back();
 							return lower;
 						}
-						else
-							return std::rotate(lower, last, end());
+						else {
+							std::rotate(lower, last, end());
+							return lower;
+						}
 					}
 				}
 				else {
@@ -160,8 +166,10 @@ namespace va {
 						m_data.pop_back();
 						return lower;
 					}
-					else
-						return std::rotate(lower, last, end());
+					else {
+						std::rotate(lower, last, end());
+						return lower;
+					}
 				}
 			}
 
@@ -169,7 +177,8 @@ namespace va {
 			iterator emplace_common(Args&& ...args) {
 				m_data.emplace_back(std::forward<Args>(args)...);
 				auto upper = impl_upper_bound(begin(), std::prev(end()), m_extract(m_data.back()));
-				return std::rotate(upper, std::prev(end()), end());
+				std::rotate(upper, std::prev(end()), end());
+				return upper;
 			}
 
 			template <class... Args>
@@ -185,17 +194,21 @@ namespace va {
 				if (pos == last || m_val_cmp(*last, *pos)) {
 					if (pos == begin() 
 						|| m_val_cmp(*std::prev(pos), *last) 
-						|| m_equal(m_extract(*std::prev(pos)), m_extract(*last)))
-						return std::rotate(pos, last, end());
-					else
-						return std::rotate(
-							impl_upper_bound(begin(), std::prev(pos), m_extract(*last)), 
-							last, 
-							end());
+						|| m_equal(m_extract(*std::prev(pos)), m_extract(*last))) 
+					{
+						std::rotate(pos, last, end());
+						return pos;
+					}
+					else {
+						auto upper = impl_upper_bound(begin(), std::prev(pos), m_extract(*last));
+						std::rotate(upper, last, end());
+						return upper;
+					}
 				}
 				else {
 					auto upper = impl_upper_bound(pos, last, m_extract(*last));
-					return std::rotate(upper, last, end());
+					std::rotate(upper, last, end());
+					return upper;
 				}
 			}
 

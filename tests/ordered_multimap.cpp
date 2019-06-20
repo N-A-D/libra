@@ -138,8 +138,10 @@ TEST(OrderedMultimapTests, InsertionTests) {
 	// Test order of insertion
 
 	// Test single value insert
-	for (auto pair : pairs)
-		multimap.insert(pair);
+	for (auto pair : pairs) {
+		auto ret = multimap.insert(pair);
+		ASSERT_EQ(pair.first, ret->first);
+	}
 	ASSERT_EQ(N, multimap.count(0));
 	ASSERT_TRUE(std::is_sorted(multimap.begin(), multimap.end(), multimap.value_comp()));
 	ASSERT_TRUE(std::is_sorted(multimap.begin(), multimap.end(), secondary_compare()));
@@ -157,7 +159,8 @@ TEST(OrderedMultimapTests, InsertionTests) {
 	// Test random hint
 	auto it = multimap.begin();
 	for (auto pair : pairs) {
-		multimap.insert(it, pair);
+		auto ret = multimap.insert(it, pair);
+		ASSERT_EQ(pair.first, ret->first);
 		it = multimap.begin() + std::rand() % multimap.size();
 	}
 	ASSERT_EQ(N, multimap.count(0));
@@ -177,8 +180,10 @@ TEST(OrderedMultimapTests, InsertionTests) {
 	std::shuffle(pairs.begin(), pairs.end(), gen);
 	
 	// Test random single value insert
-	for (auto pair : pairs)
-		multimap.insert(pair);
+	for (auto pair : pairs) {
+		auto ret = multimap.insert(pair);
+		ASSERT_EQ(pair.first, ret->first);
+	}
 	ASSERT_TRUE(std::is_sorted(multimap.begin(), multimap.end(), multimap.value_comp()));
 	for (int i = 0; i < N; ++i) {
 		ASSERT_EQ(N, multimap.count(i)); // This is what count does behind the scenes
@@ -199,7 +204,8 @@ TEST(OrderedMultimapTests, InsertionTests) {
 	// Test random hint insertion
 	it = multimap.begin();
 	for (auto pair : pairs) {
-		multimap.insert(it, pair);
+		auto ret = multimap.insert(it, pair);
+		ASSERT_EQ(pair.first, ret->first);
 		it = multimap.begin() + std::rand() % multimap.size();
 	}
 	ASSERT_TRUE(std::is_sorted(multimap.begin(), multimap.end(), multimap.value_comp()));

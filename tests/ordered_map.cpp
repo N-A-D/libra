@@ -99,6 +99,7 @@ TEST(OrderedMapTests, InsertionTests) {
 	// Test insertion
 	for (int i = 0; i < N; ++i) {
 		auto ret = map.insert(map_type::value_type(i, i));
+		ASSERT_EQ(i, ret.first->first);
 		ASSERT_TRUE(ret.second);
 	}
 	ASSERT_EQ(N, map.size());
@@ -111,7 +112,8 @@ TEST(OrderedMapTests, InsertionTests) {
 	auto it = map.begin();
 	for (int i = 0; i < N; ++i) {
 		auto value = std::make_pair(i, i);
-		map.insert(it, value);
+		auto ret = map.insert(it, value);
+		ASSERT_EQ(value.first, ret->first);
 		it = map.end();
 	}
 	ASSERT_EQ(N, map.size());
@@ -124,7 +126,8 @@ TEST(OrderedMapTests, InsertionTests) {
 	it = map.begin();
 	for (int i = N; i > 0; --i) {
 		auto value = std::make_pair(i, i);
-		map.insert(it, value);
+		auto ret = map.insert(it, value);
+		ASSERT_EQ(value.first, ret->first);
 		it = map.end();
 	}
 	ASSERT_EQ(N, map.size());
@@ -137,7 +140,8 @@ TEST(OrderedMapTests, InsertionTests) {
 	it = map.begin();
 	for (int i = N; i > 0; --i) {
 		auto value = std::make_pair(i, i);
-		map.insert(it, value);
+		auto ret = map.insert(it, value);
+		ASSERT_EQ(value.first, ret->first);
 		it = map.begin();
 	}
 	ASSERT_EQ(N, map.size());
@@ -151,13 +155,13 @@ TEST(OrderedMapTests, InsertionTests) {
 	for (int i = 0; i < N; ++i) {
 		auto value = std::make_pair(i, i);
 		it = map.insert(it, value);
+		ASSERT_EQ(value.first, it->first);
 	}
 	ASSERT_EQ(N, map.size());
 	ASSERT_TRUE(std::is_sorted(map.begin(), map.end()));
 	ASSERT_EQ(std::unique(map.begin(), map.end()), map.end());
 
 	map.clear();
-
 
 	// Setup random integers
 	std::srand(std::time(nullptr));
@@ -168,6 +172,7 @@ TEST(OrderedMapTests, InsertionTests) {
 	// Test random integer insertion
 	for (auto integer : integers) {
 		auto ret = map.insert(std::make_pair(integer, integer));
+		ASSERT_EQ(integer, ret.first->first);
 		ASSERT_TRUE(ret.second);
 	}
 	ASSERT_EQ(N, map.size());
@@ -181,6 +186,7 @@ TEST(OrderedMapTests, InsertionTests) {
 	for (auto integer : integers) {
 		auto value = std::make_pair(integer, integer);
 		it = map.insert(it, value);
+		ASSERT_EQ(value.first, it->first);
 		it = map.begin() + std::rand() % map.size();
 	}
 	ASSERT_EQ(N, map.size());
@@ -196,7 +202,8 @@ TEST(OrderedMapTests, InsertionTests) {
 
 	// Test random insertion with duplicates
 	for (auto integer : integers) {
-		map.insert(std::make_pair(integer, integer));
+		auto ret = map.insert(std::make_pair(integer, integer));
+		ASSERT_EQ(integer, ret.first->first);
 	}
 	ASSERT_EQ(N, map.size());
 	ASSERT_TRUE(std::is_sorted(map.begin(), map.end()));
@@ -208,7 +215,8 @@ TEST(OrderedMapTests, InsertionTests) {
 	it = map.begin();
 	for (auto integer : integers) {
 		auto value = std::make_pair(integer, integer);
-		map.insert(it, value);
+		auto ret = map.insert(it, value);
+		ASSERT_EQ(value.first, ret->first);
 		it = map.begin() + std::rand() % map.size();
 	}
 	ASSERT_EQ(N, map.size());
@@ -235,12 +243,16 @@ TEST(OrderedMapTests, TryEmplace) {
 	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
 	map_type map;
 	for (auto integer : integers) {
-		map.try_emplace(integer, false);
+		auto ret = map.try_emplace(integer, false);
+		ASSERT_EQ(integer, ret.first->first);
+		ASSERT_TRUE(ret.second);
 		ASSERT_FALSE(map.at(integer));
 		ASSERT_FALSE(map[integer]);
 	}
 	for (auto integer : integers) {
-		map.try_emplace(integer, true);
+		auto ret = map.try_emplace(integer, true);
+		ASSERT_EQ(integer, ret.first->first);
+		ASSERT_FALSE(ret.second);
 		ASSERT_FALSE(map.at(integer)); // The elements remain false
 		ASSERT_FALSE(map[integer]);
 	}
@@ -254,7 +266,8 @@ TEST(OrderedMapTests, TryEmplace) {
 	// Random hint
 	auto it = map.begin();
 	for (auto integer : integers) {
-		map.try_emplace(it, integer, true);
+		auto ret = map.try_emplace(it, integer, true);
+		ASSERT_EQ(integer, ret->first);
 		ASSERT_TRUE(map.at(integer));
 		ASSERT_TRUE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
@@ -263,7 +276,8 @@ TEST(OrderedMapTests, TryEmplace) {
 	it = map.begin();
 	std::shuffle(integers.begin(), integers.end(), gen);
 	for (auto integer : integers) {
-		map.try_emplace(it, integer, false);
+		auto ret = map.try_emplace(it, integer, false);
+		ASSERT_EQ(integer, ret->first);
 		ASSERT_TRUE(map.at(integer));
 		ASSERT_TRUE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
@@ -275,12 +289,16 @@ TEST(OrderedMapTests, InsertOrAssignTests) {
 	std::generate(integers.begin(), integers.end(), [n = 0]() mutable { return n++; });
 	map_type map;
 	for (auto integer : integers) {
-		map.insert_or_assign(integer, false);
+		auto ret = map.insert_or_assign(integer, false);
+		ASSERT_EQ(integer, ret.first->first);
+		ASSERT_TRUE(ret.second);
 		ASSERT_FALSE(map.at(integer));
 		ASSERT_FALSE(map[integer]);
 	}
 	for (auto integer : integers) {
-		map.insert_or_assign(integer, true);
+		auto ret = map.insert_or_assign(integer, true);
+		ASSERT_EQ(integer, ret.first->first);
+		ASSERT_FALSE(ret.second);
 		ASSERT_TRUE(map.at(integer));
 		ASSERT_TRUE(map[integer]);
 	}
@@ -294,7 +312,8 @@ TEST(OrderedMapTests, InsertOrAssignTests) {
 	// Random hint
 	auto it = map.begin();
 	for (auto integer : integers) {
-		map.insert_or_assign(it, integer, true);
+		auto ret = map.insert_or_assign(it, integer, true);
+		ASSERT_EQ(integer, ret->first);
 		ASSERT_TRUE(map.at(integer));
 		ASSERT_TRUE(map[integer]);
 		it = map.begin() + std::rand() % map.size();
@@ -303,7 +322,8 @@ TEST(OrderedMapTests, InsertOrAssignTests) {
 	it = map.begin();
 	std::shuffle(integers.begin(), integers.end(), gen);
 	for (auto integer : integers) {
-		map.insert_or_assign(it, integer, false);
+		auto ret = map.insert_or_assign(it, integer, false);
+		ASSERT_EQ(integer, ret->first);
 		ASSERT_FALSE(map.at(integer));
 		ASSERT_FALSE(map[integer]);
 		it = map.begin() + std::rand() % map.size();

@@ -137,8 +137,10 @@ TEST(OrderedMultisetTests, InsertionTests) {
 
 	multiset_type multiset;
 
-	for (auto pair : pairs)
-		multiset.insert(pair);
+	for (auto pair : pairs) {
+		auto ret = multiset.insert(pair);
+		ASSERT_EQ(pair.first, ret->first);
+	}
 	ASSERT_EQ(N, multiset.count(std::pair(0, 0)));
 	ASSERT_TRUE(std::is_sorted(multiset.begin(), multiset.end(), multiset.value_comp()));
 	ASSERT_TRUE(std::is_sorted(multiset.begin(), multiset.end(), secondary_compare()));
@@ -154,7 +156,8 @@ TEST(OrderedMultisetTests, InsertionTests) {
 
 	auto it = multiset.begin();
 	for (auto pair : pairs) {
-		multiset.insert(it, pair);
+		auto ret = multiset.insert(it, pair);
+		ASSERT_EQ(pair.first, ret->first);
 		it = multiset.begin() + std::rand() % multiset.size();
 	}
 	ASSERT_EQ(N, multiset.count(std::pair(0, 0)));
@@ -170,8 +173,10 @@ TEST(OrderedMultisetTests, InsertionTests) {
 	}
 	std::shuffle(pairs.begin(), pairs.end(), gen);
 
-	for (auto pair : pairs)
-		multiset.insert(pair);
+	for (auto pair : pairs) {
+		auto ret = multiset.insert(pair);
+		ASSERT_EQ(pair.first, ret->first);
+	}
 	ASSERT_EQ(N * N, multiset.size());
 	ASSERT_TRUE(std::is_sorted(multiset.begin(), multiset.end(), multiset.value_comp()));
 	for (int i = 0; i < N; ++i)
@@ -189,7 +194,8 @@ TEST(OrderedMultisetTests, InsertionTests) {
 
 	it = multiset.begin(); 
 	for (auto pair : pairs) {
-		multiset.insert(it, pair);
+		auto ret = multiset.insert(it, pair);
+		ASSERT_EQ(pair.first, ret->first);
 		it = multiset.begin() + std::rand() % multiset.size();
 	}
 	ASSERT_EQ(N * N, multiset.size());

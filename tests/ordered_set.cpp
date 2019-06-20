@@ -84,6 +84,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test insertion
 	for (int i = 0; i < N; ++i) {
 		auto ret = set.insert(i);
+		ASSERT_EQ(i, *ret.first);
 		ASSERT_TRUE(ret.second);
 	}
 	ASSERT_EQ(N, set.size());
@@ -95,7 +96,8 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test insertion with correct hint
 	auto it = set.begin();
 	for (int i = 0; i < N; ++i) {
-		set.insert(it, i);
+		auto ret = set.insert(it, i);
+		ASSERT_EQ(i, *ret);
 		it = set.end();
 	}
 	ASSERT_EQ(N, set.size());
@@ -107,7 +109,8 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test insertion with incorrect hint
 	it = set.begin();
 	for (int i = N; i > 0; --i) {
-		set.insert(it, i);
+		auto ret = set.insert(it, i);
+		ASSERT_EQ(i, *ret);
 		it = set.end();
 	}
 	ASSERT_EQ(N, set.size());
@@ -119,7 +122,8 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test insertion with corrected hint
 	it = set.begin();
 	for (int i = N; i > 0; --i) {
-		set.insert(it, i);
+		auto ret = set.insert(it, i);
+		ASSERT_EQ(i, *ret);
 		it = set.begin();
 	}
 	ASSERT_EQ(N, set.size());
@@ -132,6 +136,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	it = set.begin();
 	for (int i = 0; i < N; ++i) {
 		it = set.insert(it, i);
+		ASSERT_EQ(i, *it);
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
@@ -139,7 +144,6 @@ TEST(OrderedSetTests, InsertionTests) {
 
 	set.clear();
 
-	
 	// Setup random integers
 	std::srand(std::time(nullptr));
 	std::vector<int> integers(N);
@@ -149,6 +153,7 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test random integer insertion
 	for (auto integer : integers) {
 		auto ret = set.insert(integer);
+		ASSERT_EQ(integer, *ret.first);
 		ASSERT_TRUE(ret.second);
 	}
 	ASSERT_EQ(N, set.size());
@@ -160,7 +165,8 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test random hint insertion
 	it = set.begin();
 	for (auto integer : integers) {
-		set.insert(it, integer);
+		auto ret = set.insert(it, integer);
+		ASSERT_EQ(integer, *ret);
 		it = set.begin() + std::rand() % set.size();
 	}
 	ASSERT_EQ(N, set.size());
@@ -176,7 +182,8 @@ TEST(OrderedSetTests, InsertionTests) {
 
 	// Test random insertion with duplicates
 	for (auto integer : integers) {
-		set.insert(integer);
+		auto ret = set.insert(integer);
+		ASSERT_EQ(integer, *ret.first);
 	}
 	ASSERT_EQ(N, set.size());
 	ASSERT_TRUE(std::is_sorted(set.begin(), set.end()));
@@ -187,7 +194,8 @@ TEST(OrderedSetTests, InsertionTests) {
 	// Test random hinted insertion with duplicates
 	it = set.begin();
 	for (auto integer : integers) {
-		set.insert(it, integer);
+		auto ret = set.insert(it, integer);
+		ASSERT_EQ(integer, *ret);
 		it = set.begin() + std::rand() % set.size();
 	}
 	ASSERT_EQ(N, set.size());

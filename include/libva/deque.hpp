@@ -239,68 +239,63 @@ namespace va {
 
 		explicit deque(const Allocator& alloc)
 			: m_alloc(alloc)
-		{
+		{ 
 			initialize();
 		}
 
 		explicit deque(size_type n, const Allocator& alloc = Allocator())
 			: m_alloc(alloc)
 		{
-			initialize(n);
+			if (n > 0)
+				initialize_default_construct_n(n);
 		}
 
 		deque(size_type n, const value_type& v, const Allocator& alloc = Allocator())
 			: m_alloc(alloc)
 		{
-			initialize(n, v);
+			if (n > 0)
+				initialize_fill_n(n, v);
 		}
 
 		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
 		deque(InIt first, InIt last, const Allocator& alloc = Allocator())
 			: m_alloc(alloc)
 		{
-			initialize(first, last);
+			if (std::distance(first, last) > 0)
+				initialize_copy(first, last);
 		}
 
 		deque(const deque& other)
 			: m_alloc(alloc_traits::select_on_container_copy_construction(other.get_allocator()))
 		{
-			initialize(other.begin(), other.end());
+			if (!other.empty())
+				initialize_copy(other.begin(), other.end());
 		}
 
 		deque(const deque& other, const Allocator& alloc)
 			: m_alloc(alloc)
 		{
-			initialize(other.begin(), other.end());
+			if (!other.empty())
+				initialize_copy(other.begin(), other.end());
 		}
 
 		deque(deque&& other)
-			: m_data(other.m_data)
-			, m_limit(other.m_limit)
-			, m_head(other.m_head)
-			, m_tail(other.m_tail)
-			, m_size(other.m_size)
-			, m_alloc(std::move(other.m_alloc))
+			: m_alloc(std::move(other.m_alloc))
 		{
-			other.initialize();
+			steal_resources(std::move(other));
 		}
 
 		deque(deque&& other, const Allocator& alloc)
 			: m_alloc(alloc)
 		{
-			if (alloc_traits::is_always_equal::value || m_alloc == other.get_allocator()) {
-				m_data = other.m_data;
-				m_limit = other.m_limit;
-				m_head = other.m_head;
-				m_tail = other.m_tail;
-				m_size = other.m_size;
-				other.initialize();
-			}
+			if (m_alloc == other.get_allocator())
+				steal_resources(std::move(other));
 			else {
-				initialize(std::move_iterator(other.begin(), other.end()));
-				// Set other's size to 0 so that upon destruction it only deallocates memory
-				other.m_size = 0;
-				other.m_head = other.m_tail = other.m_data;
+				if (!other.empty()) {
+					initialize_move(other.begin(), other.end());
+					other.m_size = 0;
+					other.m_head = other.m_tail = other.m_data;
+				}
 			}
 		}
 
@@ -315,7 +310,7 @@ namespace va {
 		~deque()
 		{
 			clear(); // Destroy any elements
-			deallocate_storage(); // Release any allocated storage
+			deallocate(); // Release any allocated storage
 		}
 
 		////////////////////////////////////////////////////////////////////////////////
@@ -323,8 +318,7 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 
 		deque& operator=(const deque& other);
-		deque& operator=(deque&& other) noexcept(alloc_traits::is_always_equal::value);
-
+		deque& operator=(deque&& other);
 		deque& operator=(std::initializer_list<value_type> list) {
 			assign(list);
 			return *this;
@@ -396,9 +390,9 @@ namespace va {
 		//                                Iterators                                   //
 		////////////////////////////////////////////////////////////////////////////////
 
-		iterator begin() noexcept { return iterator(this, m_head); }
-		const_iterator begin() const noexcept { return const_iterator(this, m_head); }
-		const_iterator cbegin() const noexcept { return const_iterator(this, m_head); }
+		iterator begin() noexcept { return iterator(this, (!empty() ? m_head : nullptr)); }
+		const_iterator begin() const noexcept { return const_iterator(this, (!empty() ? m_head : nullptr)); }
+		const_iterator cbegin() const noexcept { return const_iterator(this, (!empty() ? m_head : nullptr)); }
 
 		iterator end() noexcept { return iterator(this, nullptr); }
 		const_iterator end() const noexcept { return const_iterator(this, nullptr); }
@@ -447,7 +441,7 @@ namespace va {
 			difference_type off = pos - cbegin();
 			if (first == last)
 				return begin() + off;
-			iterator it = insert(pos, --*last);
+			iterator it;
 			while (last != first)
 				it = insert(it, --*last);
 			return it;
@@ -457,11 +451,57 @@ namespace va {
 			return insert(pos, list.begin(), list.end());
 		}
 
-		template <class... Args>
-		iterator emplace(const_iterator pos, Args&&... args) 
-		{ return emplace_at(pos, std::forward<Args>(args)...); }
+		iterator emplace(const_iterator pos, Args&&... args)
+		{
+			if (pos == cbegin()) {
+				append_front(std::forward<Args>(args)...);
+				return begin();
+			}
+			if (pos == cend()) {
+				append_back(std::forward<Args>(args)...);
+				return std::prev(end());
+			}
+			difference_type from_front = pos - cbegin();
+			difference_type from_back = cend() - pos;
+			if (from_front < from_back) {
+				append_front(std::forward<Args>(args)...);
+				iterator it = end() - from_back;
+				std::rotate(begin(), begin() + 1, it);
+				return std::prev(it);
+			}
+			else {
+				append_back(std::forward<Args>(args)...);
+				iterator it = begin() + from_front;
+				std::rotate(it, std::prev(end()), end());
+				return it;
+			}
+		}
 
-		iterator erase(const_iterator pos) { return remove_at(pos); }
+		iterator erase(const_iterator pos) {
+			if (pos == cbegin()) {
+				remove_front();
+				return begin();
+			}
+			if (pos == std::prev(cend())) {
+				remove_back();
+				return end();
+			}
+			difference_type from_front = pos - cbegin();
+			difference_type from_back = cend() - pos;
+			if (from_front < from_back) {
+				iterator it = end() - from_back;
+				std::rotate(begin(), it, std::next(it));
+				remove_front();
+				return std::next(it);
+			}
+			else {
+				iterator it = begin() + from_front;
+				std::rotate(it, it + 1, end());
+				remove_back();
+				return it;
+			}
+		}
+
 		iterator erase(const_iterator first, const_iterator last) {
 			assert(last != cend() && first != cend());
 			assert(first <= last && "Invalid range!");
@@ -537,15 +577,54 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 
 		// Acquires memory for the container
-		pointer allocate_storage(size_type cap) {
+		pointer allocate(size_type cap) {
 			return alloc_traits::allocate(m_alloc, cap);
 		}
 
 		// Frees memory used by the container
-		void deallocate_storage() {
+		void deallocate() {
 			if (m_data != nullptr) {
 				alloc_traits::deallocate(m_alloc, m_data, capacity());
 				initialize(); // Reinitialize to empty container
+			}
+		}
+
+		// Constructs an element at the given location with the given constructor arguments
+		template <class... Args>
+		void construct(pointer p, Args&&... args) {
+			alloc_traits::construct(m_alloc, p, std::forward<Args>(args)...);
+		}
+
+		// Destroys the element at the given location
+		void destroy(pointer p) {
+			alloc_traits::destroy(m_alloc, p);
+		}
+
+		// Transfers the contents of the container to a new memory location
+		void migrate(pointer dest) {
+			if constexpr (std::is_nothrow_move_constructible_v<T>) {
+				if (m_tail > m_head)
+					std::uninitialized_move(m_head, m_tail, dest);
+				else {
+					pointer tmp = std::uninitialized_move(m_head, m_limit, dest);
+					std::uninitialized_move(m_data, m_tail, tmp);
+				}
+				// uninitialized_move calls T's destructor
+				// Since we moved every element over, we only need to free memory
+				deallocate();
+			}
+			else {
+				if (m_tail > m_head)
+					std::uninitialized_copy(m_head, m_tail, dest);
+				else {
+					pointer tmp = std::uninitialized_copy(m_head, m_limit, dest);
+					std::uninitialized_copy(m_data, m_tail, tmp);
+				}
+				// uninitialized_copy does not call T's destructor
+				// Since each element is still valid, we need to destroy each of them
+				// On top of that, we also need to free memory
+				clear();
+				deallocate();
 			}
 		}
 
@@ -556,31 +635,8 @@ namespace va {
 			assert(full());
 			size_type new_size = m_size;
 			size_type new_cap = std::max(2 * capacity(), size_type(1));
-			pointer new_data = allocate_storage(new_cap);
-			if constexpr (std::is_nothrow_move_constructible_v<T>) {
-				if (m_tail > m_head) // The container is linear
-					std::uninitialized_move(m_head, m_tail, new_data);
-				else {
-					pointer tmp = std::uninitialized_move(m_head, m_limit, new_data);
-					std::uninitialized_move(m_data, m_tail, tmp);
-				}
-				// uninitialized_move calls T's destructor
-				// Since we moved every element over, we only need to free memory
-				deallocate_storage();
-			}
-			else {
-				if (m_tail > m_head) // The container is linear
-					std::uninitialized_copy(m_head, m_tail, new_data);
-				else {
-					pointer tmp = std::uninitialized_copy(m_head, m_limit, new_data);
-					std::uninitialized_copy(m_data, m_tail, tmp);
-				}
-				// uninitialized_copy does not call T's destructor
-				// Since each element is still valid, we need to destroy each of them
-				// On top of that, we also need to free memory
-				clear();
-				deallocate_storage();
-			}
+			pointer new_data = allocate(new_cap);
+			migrate(new_data);
 			m_size = new_size;
 			m_data = m_head = new_data;
 			m_tail = m_head + m_size;
@@ -595,40 +651,27 @@ namespace va {
 				return;
 			assert(!full());
 			size_type new_size = m_size;
-			pointer new_data = allocate_storage(m_size);
-			if constexpr (std::is_nothrow_move_constructible_v<T>) {
-				if (m_tail > m_head) // The container is linear
-					std::uninitialized_move(m_head, m_tail, new_data);
-				else {
-					pointer tmp = std::uninitialized_move(m_head, m_limit, new_data);
-					std::uninitialized_move(m_data, m_tail, tmp);
-				}
-				// uninitialized_move calls T's destructor
-				// Since we moved every element over, we only need to free memory
-				deallocate_storage();
-			}
-			else {
-				if (m_tail > m_head) // The container is linear
-					std::uninitialized_copy(m_head, m_tail, new_data);
-				else {
-					pointer tmp = std::uninitialized_copy(m_head, m_limit, new_data);
-					std::uninitialized_copy(m_data, m_tail, tmp);
-				}
-				// uninitialized_copy does not call T's destructor
-				// Since each element is still valid, we need to destroy each of them
-				// On top of that, we also need to free memory
-				clear();
-				deallocate_storage();
-			}
+			pointer new_data = allocate(m_size);
+			migrate(new_data);
 			m_size = new_size;
-			m_data = m_head = m_tail = new_data;
+			m_data = new_data;
 			m_limit = m_data + m_size;
+			m_head = m_tail = m_data;
 			assert(full());
 		}
 
 		////////////////////////////////////////////////////////////////////////////////
 		//                              Initialization                                //
 		////////////////////////////////////////////////////////////////////////////////
+
+		void steal_resources(deque&& other) {
+			m_data = other.m_data;
+			m_limit = other.m_limit;
+			m_head = other.m_head;
+			m_tail = other.m_tail;
+			m_size = other.m_size;
+			other.initialize();
+		}
 
 		// Constructs an empty container
 		void initialize() {
@@ -637,20 +680,20 @@ namespace va {
 		}
 
 		// Constructs a container with n default-initialized elements
-		void initialize(size_type n) {
+		void initialize_default_construct_n(size_type n) {
 			static_assert(std::is_default_constructible_v<T>);
 			m_size = n;
-			m_data = allocate_storage(m_size);
+			m_data = allocate(m_size);
 			m_limit = m_data + m_size;
 			std::uninitialized_default_construct(m_data, m_limit);
 			m_head = m_tail = m_data;
 		}
 
 		// Constructs a container with n copy-constructed elements
-		void initialize(size_type n, const value_type& value) {
+		void initialize_fill_n(size_type n, const value_type& value) {
 			static_assert(std::is_copy_constructible_v<T>);
 			m_size = n;
-			m_data = allocate_storage(m_size);
+			m_data = allocate(m_size);
 			m_limit = m_data + m_size;
 			std::uninitialized_fill(m_data, m_limit, value);
 			m_head = m_tail = m_data;
@@ -658,12 +701,22 @@ namespace va {
 
 		// Constructs a container from the elements of the range [first, last)
 		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
-		void initialize(InIt first, InIt last) {
+		void initialize_copy(InIt first, InIt last) {
 			static_assert(std::is_convertible_v<typename std::iterator_traits<InIt>::value_type, value_type>);
 			static_assert(std::is_copy_constructible_v<T>);
 			m_size = std::distance(first, last);
-			m_data = allocate_storage(m_size);
+			m_data = allocate(m_size);
 			m_limit = std::uninitialized_copy(first, last, m_data);
+			m_head = m_tail = m_data;
+		}
+
+		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
+		void initialize_move(InIt first, InIt last) {
+			static_assert(std::is_convertible_v<typename std::iterator_traits<InIt>::value_type, value_type>);
+			static_assert(std::is_move_constructible_v<T>);
+			m_size = std::distance(first, last);
+			m_data = allocate(m_size);
+			m_limit = std::uninitialized_move(first, last, m_data);
 			m_head = m_tail = m_data;
 		}
 
@@ -672,69 +725,17 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 
 		template <class... Args>
-		iterator emplace_at(const_iterator pos, Args&&... args) {
-			if (pos == cend()) {
-				append_back(std::forward<Args>(args)...);
-				return std::prev(end());
-			}
-			if (pos == cbegin()) {
-				append_front(std::forward<Args>(args)...);
-				return begin();
-			}
-			difference_type off_from_front = pos - cbegin();
-			difference_type off_from_back = cend() - pos;
-			if (off_from_front < off_from_back) {
-				append_front(std::forward<Args>(args)...);
-				reverse_iterator it = rbegin() + off_from_back;
-				std::rotate(it, std::prev(rend()), rend());
-				return it.base();
-			}
-			else {
-				append_back(std::forward<Args>(args)...);
-				iterator it = begin() + off_from_front;
-				std::rotate(it, std::prev(end()), end());
-				return it;
-			}
-		}
-
-		iterator remove_at(const_iterator pos) {
-			assert(pos != cend());
-			if (std::next(pos) == end()) {
-				remove_back();
-				return std::prev(end());
-			}
-			if (pos == cbegin()) {
-				remove_front();
-				return begin();
-			}
-			difference_type off_from_front = pos - cbegin();
-			difference_type off_from_back = cend() - pos;
-			if (off_from_front < off_from_back) { 
-				reverse_iterator it = rbegin() + off_from_back;
-				std::rotate(it, it + 1, rend());
-				remove_front();
-				return std::next(it.base());
-			}
-			else {
-				iterator it = begin() + off_from_front;
-				std::rotate(it, it + 1, end());
-				remove_back();
-				return it;
-			}
-		}
-
-		template <class... Args>
 		void append_front(Args&&... args) {
 			if (empty() || full())
 				expand();
 			m_head = prev(m_head);
-			alloc_traits::construct(m_alloc, m_head, std::forward<Args>(args)...);
+			construct(m_head, std::forward<Args>(args)...);
 			++m_size;
 		}
 
 		void remove_front() {
 			assert(!empty());
-			alloc_traits::destroy(m_alloc, m_head);
+			destroy(m_head);
 			m_head = next(m_head);
 			--m_size;
 		}
@@ -743,7 +744,7 @@ namespace va {
 		void append_back(Args&&... args) {
 			if (empty() || full())
 				expand();
-			alloc_traits::construct(m_alloc, m_tail, std::forward<Args>(args)...);
+			construct(m_tail, std::forward<Args>(args)...);
 			m_tail = next(m_tail);
 			++m_size;
 		}
@@ -751,10 +752,9 @@ namespace va {
 		void remove_back() {
 			assert(!empty());
 			m_tail = prev(m_tail);
-			alloc_traits::destroy(m_alloc, m_tail);
+			destroy(m_tail);
 			--m_size;
 		}
-
 
 		////////////////////////////////////////////////////////////////////////////////
 		//                                Utilities                                   //

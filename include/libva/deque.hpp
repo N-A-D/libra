@@ -300,6 +300,7 @@ namespace va {
 				initialize(std::move_iterator(other.begin(), other.end()));
 				// Set other's size to 0 so that upon destruction it only deallocates memory
 				other.m_size = 0;
+				other.m_head = other.m_tail = other.m_data;
 			}
 		}
 

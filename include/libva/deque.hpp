@@ -650,9 +650,6 @@ namespace va {
 					pointer tmp = std::uninitialized_move(m_head, m_limit, dest);
 					std::uninitialized_move(m_data, m_tail, tmp);
 				}
-				// uninitialized_move calls T's destructor
-				// Since we moved every element over, we only need to free memory
-				deallocate();
 			}
 			else {
 				if (m_tail > m_head)
@@ -661,12 +658,9 @@ namespace va {
 					pointer tmp = std::uninitialized_copy(m_head, m_limit, dest);
 					std::uninitialized_copy(m_data, m_tail, tmp);
 				}
-				// uninitialized_copy does not call T's destructor
-				// Since each element is still valid, we need to destroy each of them
-				// On top of that, we also need to free memory
-				clear();
-				deallocate();
 			}
+			clear();
+			deallocate();
 		}
 
 		// Expands the container's capacity

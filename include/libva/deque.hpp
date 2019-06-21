@@ -471,7 +471,7 @@ namespace va {
 			difference_type off = pos - cbegin();
 			if (first == last)
 				return begin() + off;
-			iterator it;
+			iterator it = begin() + off;
 			while (last != first)
 				it = insert(it, *--last);
 			return it;

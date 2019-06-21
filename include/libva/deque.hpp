@@ -280,22 +280,18 @@ namespace va {
 		}
 
 		deque(deque&& other)
-			: m_alloc(std::move(other.m_alloc))
 		{
-			steal_resources(std::move(other));
+			steal_members(std::move(other));
 		}
 
-		deque(deque&& other, const Allocator& alloc)
+		deque(deque&& other, const Allocator& alloc) noexcept(alloc_traits::is_always_equal::value)
 			: m_alloc(alloc)
 		{
-			if (m_alloc == other.get_allocator())
+			if (alloc_traits::is_always_equal::value || m_alloc == other.get_allocator())
 				steal_resources(std::move(other));
 			else {
-				if (!other.empty()) {
+				if (!other.empty())
 					initialize_move(other.begin(), other.end());
-					other.m_size = 0;
-					other.m_head = other.m_tail = other.m_data;
-				}
 			}
 		}
 
@@ -317,8 +313,41 @@ namespace va {
 		//                                Assignment                                  //
 		////////////////////////////////////////////////////////////////////////////////
 
-		deque& operator=(const deque& other);
-		deque& operator=(deque&& other);
+		deque& operator=(const deque& other) {
+			if (this != &other) {
+				if (alloc_traits::propagate_on_container_copy_assignment::value) {
+					if (m_alloc != other.m_alloc) {
+						clear();
+						deallocate();
+					}
+					m_alloc = other.m_alloc;
+				}
+				clear();
+				initialize_copy(other.begin(), other.end());
+			}
+			return *this;
+		}
+
+		deque& operator=(deque&& other) {
+			if (this != other) {
+				if (alloc_traits::propagate_on_container_move_assignment::value) {
+					clear();
+					deallocate();
+					steal_members(std::move(other));
+				}
+				else if (alloc_traits::is_always_equal::value || m_alloc == other.m_alloc) {
+					clear();
+					deallocate();
+					steal_resources(std::move(other));
+				}
+				else {
+					clear();
+					initialize_move(other.begin(), other.end());
+				}
+			}
+			return *this;
+		}
+
 		deque& operator=(std::initializer_list<value_type> list) {
 			assign(list);
 			return *this;
@@ -413,7 +442,9 @@ namespace va {
 
 		bool empty() const noexcept { return size() == 0; }
 		size_type size() const noexcept { return m_size; }
-		size_type max_size() const noexcept { return alloc_traits::max_size(m_alloc); }
+		size_type max_size() const noexcept { 
+			return std::min<size_type>(alloc_traits::max_size(m_alloc), std::numeric_limits<difference_type>::max());
+		}
 		size_type capacity() const noexcept { return m_limit - m_data; }
 		void shrink_to_fit() { contract(); }
 
@@ -555,7 +586,17 @@ namespace va {
 			}
 		}
 
-		void swap(deque& other) noexcept(alloc_traits::is_always_equal::value);
+		void swap(deque& other) noexcept(alloc_traits::is_always_equal::value) {
+			if (this != &other) {
+				if (alloc_traits::propagate_on_container_swap::value) {
+					swap_members(other);
+				}
+				else if (m_alloc == other.m_alloc) {
+					swap_resources(other);
+				}
+				// Otherwise undefined behaviour
+			}
+		}
 
 	private:
 
@@ -664,15 +705,6 @@ namespace va {
 		//                              Initialization                                //
 		////////////////////////////////////////////////////////////////////////////////
 
-		void steal_resources(deque&& other) {
-			m_data = other.m_data;
-			m_limit = other.m_limit;
-			m_head = other.m_head;
-			m_tail = other.m_tail;
-			m_size = other.m_size;
-			other.initialize();
-		}
-
 		// Constructs an empty container
 		void initialize() {
 			m_size = 0;
@@ -761,6 +793,33 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 
 		bool full() const noexcept { return capacity() == size(); }
+
+		void steal_resources(deque&& other) {
+			m_data = other.m_data;
+			m_limit = other.m_limit;
+			m_head = other.m_head;
+			m_tail = other.m_tail;
+			m_size = other.m_size;
+			other.initialize();
+		}
+
+		void steal_members(deque&& other) {
+			m_alloc = std::move(other.m_alloc);
+			steal_resources(std::move(other));
+		}
+
+		void swap_resources(deque& other) {
+			std::swap(m_data, other.m_data);
+			std::swap(m_limit, other.m_limit);
+			std::swap(m_head, other.m_head);
+			std::swap(m_tail, other.m_tail);
+			std::swap(m_size, other.m_size);
+		}
+
+		void swap_members(deque& other) {
+			swap_resources(other);
+			std::swap(m_alloc, other.m_alloc);
+		}
 
 		bool valid_index(size_type index) const noexcept {
 			return index < m_size;

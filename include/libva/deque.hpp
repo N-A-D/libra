@@ -442,7 +442,7 @@ namespace va {
 				return begin() + off;
 			iterator it;
 			while (last != first)
-				it = insert(it, --*last);
+				it = insert(it, *--last);
 			return it;
 		}
 

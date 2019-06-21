@@ -451,8 +451,7 @@ namespace va {
 		}
 
 		template <class... Args>
-		iterator emplace(const_iterator pos, Args&&... args)
-		{
+		iterator emplace(const_iterator pos, Args&&... args) {
 			if (pos == cbegin()) {
 				append_front(std::forward<Args>(args)...);
 				return begin();
@@ -478,6 +477,7 @@ namespace va {
 		}
 
 		iterator erase(const_iterator pos) {
+			assert(pos != cend());
 			if (pos == cbegin()) {
 				remove_front();
 				return begin();

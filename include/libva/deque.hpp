@@ -412,7 +412,6 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 
 		bool empty() const noexcept { return size() == 0; }
-		bool full() const noexcept { return capacity() == size(); }
 		size_type size() const noexcept { return m_size; }
 		size_type max_size() const noexcept { return alloc_traits::max_size(m_alloc); }
 		size_type capacity() const noexcept { return m_limit - m_data; }
@@ -451,6 +450,7 @@ namespace va {
 			return insert(pos, list.begin(), list.end());
 		}
 
+		template <class... Args>
 		iterator emplace(const_iterator pos, Args&&... args)
 		{
 			if (pos == cbegin()) {
@@ -759,6 +759,8 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 		//                                Utilities                                   //
 		////////////////////////////////////////////////////////////////////////////////
+
+		bool full() const noexcept { return capacity() == size(); }
 
 		bool valid_index(size_type index) const noexcept {
 			return index < m_size;

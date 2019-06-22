@@ -305,8 +305,7 @@ namespace va {
 
 		~deque()
 		{
-			clear(); // Destroy any elements
-			deallocate(); // Release any allocated storage
+			clear_and_deallocate();
 		}
 
 		////////////////////////////////////////////////////////////////////////////////
@@ -316,34 +315,29 @@ namespace va {
 		deque& operator=(const deque& other) {
 			if (this != &other) {
 				if (alloc_traits::propagate_on_container_copy_assignment::value) {
-					if (m_alloc != other.m_alloc) {
-						clear();
-						deallocate();
-					}
+					if (m_alloc != other.m_alloc)
+						clear_and_deallocate();
 					m_alloc = other.m_alloc;
 				}
-				clear();
-				initialize_copy(other.begin(), other.end());
+				assign(other.begin(), other.end());
 			}
 			return *this;
 		}
 
-		deque& operator=(deque&& other) {
-			if (this != other) {
+		deque& operator=(deque&& other)
+			noexcept(alloc_traits::propagate_on_container_move_assignment::value || alloc_traits::is_always_equal::value)
+		{
+			if (this != &other) {
 				if (alloc_traits::propagate_on_container_move_assignment::value) {
-					clear();
-					deallocate();
+					clear_and_deallocate();
 					steal_members(std::move(other));
 				}
 				else if (alloc_traits::is_always_equal::value || m_alloc == other.m_alloc) {
-					clear();
-					deallocate();
+					clear_and_deallocate();
 					steal_resources(std::move(other));
 				}
-				else {
-					clear();
-					initialize_move(other.begin(), other.end());
-				}
+				else
+					assign(std::move_iterator(other.begin()), std::move_iterator(other.end()));
 			}
 			return *this;
 		}
@@ -419,9 +413,9 @@ namespace va {
 		//                                Iterators                                   //
 		////////////////////////////////////////////////////////////////////////////////
 
-		iterator begin() noexcept { return iterator(this, (!empty() ? m_head : nullptr)); }
-		const_iterator begin() const noexcept { return const_iterator(this, (!empty() ? m_head : nullptr)); }
-		const_iterator cbegin() const noexcept { return const_iterator(this, (!empty() ? m_head : nullptr)); }
+		iterator begin() noexcept { return iterator(this, m_head); }
+		const_iterator begin() const noexcept { return const_iterator(this, m_head); }
+		const_iterator cbegin() const noexcept { return const_iterator(this, m_head); }
 
 		iterator end() noexcept { return iterator(this, nullptr); }
 		const_iterator end() const noexcept { return const_iterator(this, nullptr); }
@@ -457,6 +451,7 @@ namespace va {
 		iterator insert(const_iterator pos, const value_type& value) { return emplace(pos, value); }
 		iterator insert(const_iterator pos, value_type&& value) { return emplace(pos, std::move(value)); }
 		iterator insert(const_iterator pos, size_type n, const value_type& value) {
+			assert(iterator_in_range(pos) && "Iterator out of range!");
 			difference_type off = pos - cbegin();
 			if (n == 0)
 				return begin() + off;
@@ -466,8 +461,9 @@ namespace va {
 			return it;
 		}
 
-		template <class BidirIt>
+		template <class BidirIt, class = std::enable_if_t<detail::is_iterator_v<BidirIt>>>
 		iterator insert(const_iterator pos, BidirIt first, BidirIt last) {
+			assert(iterator_in_range(pos) && "Iterator out of range!");
 			difference_type off = pos - cbegin();
 			if (first == last)
 				return begin() + off;
@@ -483,6 +479,7 @@ namespace va {
 
 		template <class... Args>
 		iterator emplace(const_iterator pos, Args&&... args) {
+			assert(iterator_in_range(pos) && "Iterator out of range!");
 			if (pos == cbegin()) {
 				append_front(std::forward<Args>(args)...);
 				return begin();
@@ -508,7 +505,8 @@ namespace va {
 		}
 
 		iterator erase(const_iterator pos) {
-			assert(pos != cend());
+			assert(iterator_in_range(pos) && "Iterator out of range!");
+			assert(pos != cend() && "Iterator must be dereferenceable!");
 			if (pos == cbegin()) {
 				remove_front();
 				return begin();
@@ -534,14 +532,18 @@ namespace va {
 		}
 
 		iterator erase(const_iterator first, const_iterator last) {
-			assert(last != cend() && first != cend());
+			assert(iterator_in_range(first) && "Iterator out of range!");
+			assert(iterator_in_range(last) && "Iterator out of range!");
+			assert(first != cend() && "Iterator must be dereferenceable!");
 			assert(first <= last && "Invalid range!");
-			difference_type off = first - cbegin();
+			difference_type off_first = first - cbegin();
+			difference_type off_last = last - cbegin();
+			size_type dist = last - first;
 			if (first == last)
-				return begin() + off;
-			iterator it;
-			while (last != first)
-				it = erase(--last);
+				return begin() + off_first;
+			iterator it = begin() + off_first;
+			for (size_type i = 0; i != dist; ++i)
+				it = erase(it);
 			return it;
 		}
 
@@ -586,7 +588,8 @@ namespace va {
 			}
 		}
 
-		void swap(deque& other) noexcept(alloc_traits::is_always_equal::value) {
+		void swap(deque& other) 
+			noexcept(alloc_traits::propagate_on_container_swap::value || alloc_traits::is_always_equal::value) {
 			if (this != &other) {
 				if (alloc_traits::propagate_on_container_swap::value) {
 					swap_members(other);
@@ -594,7 +597,6 @@ namespace va {
 				else if (m_alloc == other.m_alloc) {
 					swap_resources(other);
 				}
-				// Otherwise undefined behaviour
 			}
 		}
 
@@ -659,8 +661,7 @@ namespace va {
 					std::uninitialized_copy(m_data, m_tail, tmp);
 				}
 			}
-			clear();
-			deallocate();
+			clear_and_deallocate();
 		}
 
 		// Expands the container's capacity
@@ -736,6 +737,7 @@ namespace va {
 			m_head = m_tail = m_data;
 		}
 
+		// Constructs a container from the elements of the range [first, last) using move semantics
 		template <class InIt, class = std::enable_if_t<detail::is_iterator_v<InIt>>>
 		void initialize_move(InIt first, InIt last) {
 			static_assert(std::is_convertible_v<typename std::iterator_traits<InIt>::value_type, value_type>);
@@ -752,7 +754,7 @@ namespace va {
 
 		template <class... Args>
 		void append_front(Args&&... args) {
-			if (empty() || full())
+			if (full())
 				expand();
 			m_head = prev(m_head);
 			construct(m_head, std::forward<Args>(args)...);
@@ -768,7 +770,7 @@ namespace va {
 
 		template <class... Args>
 		void append_back(Args&&... args) {
-			if (empty() || full())
+			if (full())
 				expand();
 			construct(m_tail, std::forward<Args>(args)...);
 			m_tail = next(m_tail);
@@ -785,6 +787,15 @@ namespace va {
 		////////////////////////////////////////////////////////////////////////////////
 		//                                Utilities                                   //
 		////////////////////////////////////////////////////////////////////////////////
+
+		bool iterator_in_range(const_iterator pos) const {
+			return cbegin() <= pos && pos <= cend();
+		}
+
+		void clear_and_deallocate() {
+			clear();
+			deallocate();
+		}
 
 		bool full() const noexcept { return capacity() == size(); }
 
@@ -811,8 +822,8 @@ namespace va {
 		}
 
 		void swap_members(deque& other) {
-			swap_resources(other);
 			std::swap(m_alloc, other.m_alloc);
+			swap_resources(other);
 		}
 
 		bool valid_index(size_type index) const noexcept {

@@ -537,7 +537,6 @@ namespace va {
 			assert(first != cend() && "Iterator must be dereferenceable!");
 			assert(first <= last && "Invalid range!");
 			difference_type off_first = first - cbegin();
-			difference_type off_last = last - cbegin();
 			size_type dist = last - first;
 			if (first == last)
 				return begin() + off_first;

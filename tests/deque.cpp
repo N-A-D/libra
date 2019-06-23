@@ -310,6 +310,7 @@ TEST(DequeTests, ErasureTests) {
 
 	deque = { 1, 2, 3, 4, 5, 6 };
 	it = deque.erase(deque.begin() + 3, deque.end());
+	ASSERT_EQ(it, deque.end());
 	ASSERT_EQ(deque.size(), 3);
 	ASSERT_EQ(deque.front(), 1);
 	ASSERT_EQ(deque.back(), 3);
@@ -319,6 +320,7 @@ TEST(DequeTests, ErasureTests) {
 	
 	deque = { 1, 2, 3, 4, 5, 6 };
 	it = deque.erase(deque.begin(), deque.begin() + 3);
+	ASSERT_EQ(*it, 4);
 	ASSERT_EQ(deque.size(), 3);
 	ASSERT_EQ(deque.front(), 4);
 	ASSERT_EQ(deque.back(), 6);

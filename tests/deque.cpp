@@ -334,12 +334,23 @@ TEST(DequeTests, ResizingTests) {
 
 	deque.resize(6);
 	ASSERT_EQ(deque.size(), 6);
+	ASSERT_EQ(deque[0], 1);
+	ASSERT_EQ(deque[1], 2);
+	ASSERT_EQ(deque[2], 3);
+	ASSERT_EQ(deque[3], 4);
+	ASSERT_EQ(deque[4], 5);
 
 	deque.resize(4);
 	ASSERT_EQ(deque.size(), 4);
+	ASSERT_EQ(deque[0], 1);
+	ASSERT_EQ(deque[1], 2);
+	ASSERT_EQ(deque[2], 3);
+	ASSERT_EQ(deque[3], 4);
 
 	deque.resize(9, 5);
 	ASSERT_EQ(deque.size(), 9);
+	for (std::size_t i = 4; i != deque.size(); ++i)
+		ASSERT_EQ(deque[i], 5);
 
 	deque.resize(3, 11);
 	ASSERT_EQ(deque.size(), 3);

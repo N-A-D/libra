@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include "detail/constants.hpp"
+#include "detail/employee.hpp"
 
 using set_type = va::ordered_set<int>;
 
@@ -250,4 +251,26 @@ TEST(OrderedSetTests, SwapTest) {
 	s1.swap(s2);
 	ASSERT_EQ(set_type({ 5, 6, 7, 8 }), s1);
 	ASSERT_EQ(set_type({ 1, 2, 3, 4 }), s2);
+}
+
+TEST(OrderedSetTests, TransparentCompareTests) {
+	using set_t = va::ordered_set<Employee, EmployeeCompare>;
+
+	std::vector<int> ids;
+	std::generate_n(std::back_inserter(ids), N, [n = 0]() mutable { return n++; });
+	
+	std::vector<Employee> emps;
+	std::generate_n(std::back_inserter(emps), N, []() { return Employee{}; });
+
+	set_t set(emps.begin(), emps.end());
+
+	std::shuffle(emps.begin(), emps.end(), gen);
+
+	for (auto emp : emps)
+		ASSERT_TRUE(set.contains(emp));
+
+	std::shuffle(ids.begin(), ids.end(), gen);
+
+	for (auto id : ids)
+		ASSERT_TRUE(set.contains(id));
 }

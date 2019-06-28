@@ -4,6 +4,7 @@
 #include <random>
 #include <vector>
 #include <algorithm>
+#include "detail/employee.hpp"
 
 using pair_type = std::pair<int, int>;
 
@@ -265,4 +266,25 @@ TEST(OrderedMultisetTests, SwapTests) {
 	mm1.swap(mm2);
 	ASSERT_EQ(mm2, multiset_type({ {0, 0}, {1, 1}, {2, 2} }));
 	ASSERT_EQ(mm1, multiset_type({ {0, 0}, {1, 1}, {2, 2} }));
+}
+
+TEST(OrderedMultisetTests, DuplicateValueTransparentCompareTests) {
+	using set_t = va::ordered_multiset<Employee, EmployeeCompare>;
+
+	std::vector<int> ids;
+	std::generate_n(std::back_inserter(ids), N, [n = 0]() mutable { return n++; });
+
+	std::vector<Employee> emps;
+	std::generate_n(std::back_inserter(emps), N, []() { return Employee{}; });
+
+	auto copy(emps);
+	std::copy(copy.begin(), copy.end(), std::back_inserter(emps));
+
+	set_t set(emps.begin(), emps.end());
+
+	for (auto emp : emps)
+		ASSERT_EQ(set.count(emp), 2);
+
+	for (auto id : ids)
+		ASSERT_EQ(set.count(id), 2);
 }

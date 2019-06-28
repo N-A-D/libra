@@ -53,7 +53,18 @@ namespace va {
 				CompareEqual(Compare c)
 					: m_cmp(c) {}
 				bool operator()(const key_type& lhs, const key_type& rhs) const {
-					// Two keys compare equal if and only if neither compare less than the other
+					return !m_cmp(lhs, rhs)
+						&& !m_cmp(rhs, lhs);
+				}
+				template <class Key>
+				std::enable_if_t<is_transparent_v<Key, Compare>, bool>
+					operator()(const key_type& lhs, const Key& rhs) const {
+					return !m_cmp(lhs, rhs)
+						&& !m_cmp(rhs, lhs);
+				}
+				template <class Key>
+				std::enable_if_t<is_transparent_v<Key, Compare>, bool>
+					operator()(const Key& lhs, const key_type& rhs) const {
 					return !m_cmp(lhs, rhs)
 						&& !m_cmp(rhs, lhs);
 				}

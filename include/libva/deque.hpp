@@ -84,6 +84,7 @@ namespace va {
 
 			pointer operator->() const {
 				assert(valid() && "Invalid calling iterator!");
+				assert(m_it && "Iterator not dereferenceable!");
 				return m_it;
 			}
 

@@ -1,37 +1,34 @@
 #pragma once
 
-#include "detail/extract_key.hpp"
-#include "detail/ordered_container.hpp"
+#include "../detail/ordered_container.hpp"
 
-namespace va {
+namespace libra {
 
 	template <
 		class Key,
-		class MappedType,
 		class Compare = std::less<Key>,
-		class Allocator = std::allocator<std::pair<Key, MappedType>>
-	> class ordered_multimap
+		class Allocator = std::allocator<Key>
+	> class ordered_multiset
 		: public detail::ordered_container
 					<
-						std::pair<Key, MappedType>, // container value
+						Key, // container value
 						Compare, // key comparator
-						Allocator, // container allocator type
-						detail::select1st<std::pair<Key, MappedType>>, // key extractor
+						Allocator, // container allocator
+						detail::identity<Key>, // key extractor
 						true // duplicates allowed
 					>
 	{
 		using base_type = detail::ordered_container
 							<
-								std::pair<Key, MappedType>, // container value
+								Key, // container value
 								Compare, // key comparator
-								Allocator, // container allocator type
-								detail::select1st<std::pair<Key, MappedType>>, // key extractor
+								Allocator, // container allocator
+								detail::identity<Key>, // key extractor
 								true // duplicates allowed
 							>;
 	public:
 
 		using typename base_type::key_type;
-		using mapped_type = MappedType;
 		using typename base_type::value_type;
 		using typename base_type::size_type;
 		using typename base_type::difference_type;
@@ -48,49 +45,49 @@ namespace va {
 		using typename base_type::const_reverse_iterator;
 
 		// ctors
-		ordered_multimap() = default;
+		ordered_multiset() = default;
 
-		explicit ordered_multimap(const Compare& comp, const Allocator& alloc = Allocator())
+		explicit ordered_multiset(const Compare& comp, const Allocator& alloc = Allocator())
 			: base_type(comp, alloc) {}
 
-		explicit ordered_multimap(const Allocator& alloc)
+		explicit ordered_multiset(const Allocator& alloc)
 			: base_type(alloc) {}
 
 		template <class InIt>
-		ordered_multimap(InIt first, InIt last,
+		ordered_multiset(InIt first, InIt last,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
 			: base_type(first, last, comp, alloc) {}
 
 		template <class InIt>
-		ordered_multimap(InIt first, InIt last,
+		ordered_multiset(InIt first, InIt last,
 			const Allocator& alloc)
 			: base_type(first, last, alloc) {}
 
-		ordered_multimap(const ordered_multimap&) = default;
-		ordered_multimap(const ordered_multimap& other, const Allocator& alloc)
+		ordered_multiset(const ordered_multiset&) = default;
+		ordered_multiset(const ordered_multiset& other, const Allocator& alloc)
 			: base_type(other, alloc) {}
 
-		ordered_multimap(ordered_multimap&&) = default;
-		ordered_multimap(ordered_multimap&& other, const Allocator& alloc)
+		ordered_multiset(ordered_multiset&&) = default;
+		ordered_multiset(ordered_multiset&& other, const Allocator& alloc)
 			: base_type(std::move(other), alloc) {}
 
-		ordered_multimap(std::initializer_list<value_type> list,
+		ordered_multiset(std::initializer_list<value_type> list,
 			const Compare& comp = Compare(),
 			const Allocator& alloc = Allocator())
 			: base_type(list, comp, alloc) {}
 
-		ordered_multimap(std::initializer_list<value_type> list,
+		ordered_multiset(std::initializer_list<value_type> list,
 			const Allocator& alloc)
 			: base_type(list, alloc) {}
 
 		// dtor
-		~ordered_multimap() = default;
+		~ordered_multiset() = default;
 
 		// assignment
-		ordered_multimap& operator=(const ordered_multimap&) = default;
-		ordered_multimap& operator=(ordered_multimap&&) = default;
-		ordered_multimap& operator=(std::initializer_list<value_type> list) {
+		ordered_multiset& operator=(const ordered_multiset&) = default;
+		ordered_multiset& operator=(ordered_multiset&&) = default;
+		ordered_multiset& operator=(std::initializer_list<value_type> list) {
 			base_type::operator=(list);
 			return *this;
 		}
@@ -141,10 +138,10 @@ namespace va {
 }
 
 namespace std {
-	template <class Key, class MappedType, class Compare, class Allocator>
+	template <class Key, class Compare, class Allocator>
 	void swap(
-		va::ordered_multimap<Key, MappedType, Compare, Allocator>& lhs,
-		va::ordered_multimap<Key, MappedType, Compare, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs)))
+		libra::ordered_multiset<Key, Compare, Allocator>& lhs,
+		libra::ordered_multiset<Key, Compare, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs)))
 	{
 		lhs.swap(rhs);
 	}

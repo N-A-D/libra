@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
-#include "../include/libva/ordered_map.hpp"
+#include "../include/libra/container/ordered_map.hpp"
 #include "detail/constants.hpp"
 #include <random>
 #include <vector>
 #include <algorithm>
 
-using map_type = va::ordered_map<int, int>;
+using map_type = libra::ordered_map<int, int>;
 using pair_type = std::pair<int, int>;
 
 struct equivalent {
@@ -226,7 +226,7 @@ TEST(OrderedMapTests, InsertionTests) {
 
 TEST(OrderedMapTests, ElementAccess) {
 	std::vector<int> integers;
-	va::ordered_map<int, bool> map;
+	libra::ordered_map<int, bool> map;
 	for (int i = 0; i < N; ++i) {
 		map.emplace(std::make_pair(i, true));
 		integers.emplace_back(i);

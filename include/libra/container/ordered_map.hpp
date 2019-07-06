@@ -1,10 +1,9 @@
 #pragma once
 
 #include <stdexcept>
-#include "detail/extract_key.hpp"
-#include "detail/ordered_container.hpp"
+#include "../detail/ordered_container.hpp"
 
-namespace va {
+namespace libra {
 
 	template <
 		class Key,
@@ -265,8 +264,8 @@ namespace va {
 namespace std {
 	template <class Key, class MappedType, class Compare, class Allocator>
 	void swap(
-		va::ordered_map<Key, MappedType, Compare, Allocator>& lhs,
-		va::ordered_map<Key, MappedType, Compare, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs)))
+		libra::ordered_map<Key, MappedType, Compare, Allocator>& lhs,
+		libra::ordered_map<Key, MappedType, Compare, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs)))
 	{
 		lhs.swap(rhs);
 	}

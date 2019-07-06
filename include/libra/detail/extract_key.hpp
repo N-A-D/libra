@@ -1,6 +1,6 @@
 #pragma once
 
-namespace va {
+namespace libra {
 	namespace detail {
 
 		template <class T>

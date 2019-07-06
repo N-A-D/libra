@@ -4,7 +4,7 @@
 #include <random>
 #include <algorithm>
 #include "detail/constants.hpp"
-#include "../include/libva/deque.hpp"
+#include "../include/libra/container/deque.hpp"
 
 template <class T>
 struct my_allocator { // For testing copy/move constructors and assignment operators
@@ -33,8 +33,8 @@ bool operator!=(const my_allocator<T>& lhs, const my_allocator<T>& rhs) {
 	return true;
 }
 
-using deque_t = va::deque<int>;
-using deque2_t = va::deque<int, my_allocator<int>>;
+using deque_t = libra::deque<int>;
+using deque2_t = libra::deque<int, my_allocator<int>>;
 
 TEST(DequeTests, ConstructorTests) {
 	// Default constructor
@@ -360,23 +360,23 @@ TEST(DequeTests, ResizingTests) {
 }
 
 TEST(DequeTests, SwapTests) {
-	va::deque<int> d1 = { 1, 2, 3, 4 };
-	va::deque<int> d2 = { 5, 6, 7, 8 };
+	libra::deque<int> d1 = { 1, 2, 3, 4 };
+	libra::deque<int> d2 = { 5, 6, 7, 8 };
 	
 	std::swap(d1, d2);
 	
-	ASSERT_EQ(d1, va::deque<int>({5, 6, 7, 8}));
-	ASSERT_EQ(d2, va::deque<int>({1, 2, 3, 4}));
+	ASSERT_EQ(d1, libra::deque<int>({5, 6, 7, 8}));
+	ASSERT_EQ(d2, libra::deque<int>({1, 2, 3, 4}));
 	
-	va::deque<int, my_allocator<int>> d3 = { 1, 2, 3, 4 };
-	va::deque<int, my_allocator<int>> d4 = { 5, 6, 7, 8 };
+	libra::deque<int, my_allocator<int>> d3 = { 1, 2, 3, 4 };
+	libra::deque<int, my_allocator<int>> d4 = { 5, 6, 7, 8 };
 
 	std::swap(d3, d4);
 
 	// No change since my_allocator does not propagate on swap or is always equal
 
-	va::deque<int, my_allocator<int>> y{ 1, 2, 3, 4 };
-	va::deque<int, my_allocator<int>> z{ 5, 6, 7, 8 };
+	libra::deque<int, my_allocator<int>> y{ 1, 2, 3, 4 };
+	libra::deque<int, my_allocator<int>> z{ 5, 6, 7, 8 };
 
 	ASSERT_EQ(d3, y);
 	ASSERT_EQ(d4, z);

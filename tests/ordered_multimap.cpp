@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../include/libva/ordered_multimap.hpp"
+#include "../include/libra/container/ordered_multimap.hpp"
 #include "detail/constants.hpp"
 #include <random>
 #include <vector>
@@ -7,7 +7,7 @@
 
 std::mt19937 gen{ std::random_device{}() };
 
-using multimap_type = va::ordered_multimap<int, int>;
+using multimap_type = libra::ordered_multimap<int, int>;
 using pair_type = typename multimap_type::value_type;
 
 struct secondary_compare {

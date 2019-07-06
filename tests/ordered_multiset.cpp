@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../include/libva/ordered_multiset.hpp"
+#include "../include/libra/container/ordered_multiset.hpp"
 #include "detail/constants.hpp"
 #include <random>
 #include <vector>
@@ -21,7 +21,7 @@ struct secondary_compare {
 	}
 };
 
-using multiset_type = va::ordered_multiset<pair_type, first_compare>;
+using multiset_type = libra::ordered_multiset<pair_type, first_compare>;
 
 std::mt19937 gen{ std::random_device{}() };
 
@@ -269,7 +269,7 @@ TEST(OrderedMultisetTests, SwapTests) {
 }
 
 TEST(OrderedMultisetTests, DuplicateValueTransparentCompareTests) {
-	using set_t = va::ordered_multiset<Employee, EmployeeCompare>;
+	using set_t = libra::ordered_multiset<Employee, EmployeeCompare>;
 
 	std::vector<int> ids;
 	std::generate_n(std::back_inserter(ids), N, [n = 0]() mutable { return n++; });

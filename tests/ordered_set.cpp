@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
-#include "../include/libva/ordered_set.hpp"
+#include "../include/libra/container/ordered_set.hpp"
 #include <random>
 #include <vector>
 #include <algorithm>
 #include "detail/constants.hpp"
 #include "detail/employee.hpp"
 
-using set_type = va::ordered_set<int>;
+using set_type = libra::ordered_set<int>;
 
 std::mt19937 gen{ std::random_device{}() };
 
@@ -254,7 +254,7 @@ TEST(OrderedSetTests, SwapTest) {
 }
 
 TEST(OrderedSetTests, TransparentCompareTests) {
-	using set_t = va::ordered_set<Employee, EmployeeCompare>;
+	using set_t = libra::ordered_set<Employee, EmployeeCompare>;
 
 	std::vector<int> ids;
 	std::generate_n(std::back_inserter(ids), N, [n = 0]() mutable { return n++; });

@@ -1,2 +1,2 @@
-# libva
-Vector Adapter Library
+# libra
+Random access library

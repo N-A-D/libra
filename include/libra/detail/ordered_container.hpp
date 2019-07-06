@@ -3,10 +3,48 @@
 #include <vector>
 #include <cassert>
 #include <algorithm>
-#include "type_traits.hpp"
+#include "is_transparent.hpp"
+#include "../algorithm/binary_search.hpp"
 
-namespace va {
+namespace libra {
 	namespace detail {
+
+		template <
+			class Value,
+			class Compare,
+			class ExtractKey
+		> class ValueCompare {
+			Compare m_cmp;
+			ExtractKey m_extract;
+		public:
+			ValueCompare(Compare c)
+				: m_cmp(c)
+				, m_extract() {}
+			bool operator()(const Value& lhs, const Value& rhs) const {
+				return m_cmp(m_extract(lhs), m_extract(rhs));
+			}
+		};
+
+		template <
+			class Key,
+			class Compare
+		> class CompareEqual {
+			Compare m_cmp;
+		public:
+			CompareEqual(Compare c)
+				: m_cmp(c) {}
+			bool operator()(const Key& lhs, const Key& rhs) const {
+				return !m_cmp(lhs, rhs) && !m_cmp(rhs, lhs);
+			}
+			template <class K, class = std::enable_if_t<detail::is_transparent_v<K, Compare>>>
+			bool operator()(const Key& lhs, const K& rhs) const {
+				return !m_cmp(lhs, rhs) && !m_cmp(rhs, lhs);
+			}
+			template <class K, class = std::enable_if_t<detail::is_transparent_v<K, Compare>>>
+			bool operator()(const K& lhs, const Key& rhs) const {
+				return !m_cmp(lhs, rhs) && !m_cmp(rhs, lhs);
+			}
+		};
 
 		template <
 			class Value,
@@ -23,6 +61,8 @@ namespace va {
 			using size_type              = typename container_type::size_type;
 			using difference_type        = typename container_type::difference_type;
 			using key_compare            = Compare;
+			using value_compare          = ValueCompare<Value, Compare, ExtractKey>;
+			using key_equal              = CompareEqual<key_type, Compare>;
 			using allocator_type         = typename container_type::allocator_type;
 			using reference              = typename container_type::reference;
 			using const_reference        = typename container_type::const_reference;
@@ -33,88 +73,15 @@ namespace va {
 			using reverse_iterator       = typename container_type::reverse_iterator;
 			using const_reverse_iterator = typename container_type::const_reverse_iterator;
 
-			class value_compare {
-				friend class ordered_container;
-			protected:
-				Compare m_cmp;
-				value_compare(Compare c)
-					: m_cmp(c) {}
-			public:
-				bool operator()(const value_type& lhs, const value_type& rhs) const {
-					ExtractKey key_of;
-					return m_cmp(key_of(lhs), key_of(rhs));
-				}
-			};
-
 		private:
-
-			struct CompareEqual {
-				Compare m_cmp{};
-				CompareEqual(Compare c)
-					: m_cmp(c) {}
-				bool operator()(const key_type& lhs, const key_type& rhs) const {
-					return !m_cmp(lhs, rhs)
-						&& !m_cmp(rhs, lhs);
-				}
-				template <class Key>
-				std::enable_if_t<is_transparent_v<Key, Compare>, bool>
-					operator()(const key_type& lhs, const Key& rhs) const {
-					return !m_cmp(lhs, rhs)
-						&& !m_cmp(rhs, lhs);
-				}
-				template <class Key>
-				std::enable_if_t<is_transparent_v<Key, Compare>, bool>
-					operator()(const Key& lhs, const key_type& rhs) const {
-					return !m_cmp(lhs, rhs)
-						&& !m_cmp(rhs, lhs);
-				}
-			};
 
 			key_compare m_key_cmp;
 			value_compare m_val_cmp;
-			CompareEqual m_equal;
+			key_equal m_equal;
 			ExtractKey m_extract;
 			container_type m_data;
 
 			using emplace_return_type = std::conditional_t<AllowDuplicates, iterator, std::pair<iterator, bool>>;
-
-			template <class RndIt, class Key>
-			RndIt impl_lower_bound(RndIt first, RndIt last, const Key& key) const {
-				std::iterator_traits<RndIt>::difference_type len, step;
-				len = last - first;
-				RndIt mid;
-				while (len > 0) {
-					mid = first;
-					step = len / 2;
-					mid += step;
-					if (m_key_cmp(m_extract(*mid), key)) {
-						first = ++mid;
-						len -= step + 1;
-					}
-					else
-						len = step;
-				}
-				return first;
-			}
-
-			template <class RndIt, class Key>
-			RndIt impl_upper_bound(RndIt first, RndIt last, const Key& key) const {
-				std::iterator_traits<RndIt>::difference_type len, step;
-				len = last - first;
-				RndIt mid;
-				while (len > 0) {
-					mid = first;
-					step = len / 2;
-					mid += step;
-					if (!m_key_cmp(key, m_extract(*mid))) {
-						first = ++mid;
-						len -= step + 1;
-					}
-					else
-						len = step;
-				}
-				return first;
-			}
 
 			bool iterator_in_range(const_iterator it) const {
 				return cbegin() <= it && it <= cend();
@@ -124,7 +91,7 @@ namespace va {
 			std::pair<iterator, bool> emplace_unique(Args&& ...args) {
 				m_data.emplace_back(std::forward<Args>(args)...);
 				auto last = std::prev(end());
-				auto lower = impl_lower_bound(begin(), last, m_extract(*last));
+				auto lower = detail::lower_bound(begin(), last, m_extract(*last), m_key_cmp, m_extract);
 				if (lower == last)
 					return { lower, true };
 				else if (m_equal(m_extract(*lower), m_extract(*last))) {
@@ -158,7 +125,7 @@ namespace va {
 						return prev;
 					}
 					else {
-						auto lower = impl_lower_bound(begin(), prev, m_extract(*last));
+						auto lower = detail::lower_bound(begin(), prev, m_extract(*last), m_key_cmp, m_extract);
 						if (m_equal(m_extract(*lower), m_extract(*last))) {
 							m_data.pop_back();
 							return lower;
@@ -170,7 +137,7 @@ namespace va {
 					}
 				}
 				else {
-					auto lower = impl_lower_bound(pos, last, m_extract(*last));
+					auto lower = detail::lower_bound(pos, last, m_extract(*last), m_key_cmp, m_extract);
 					if (lower == last)
 						return lower;
 					else if (m_equal(m_extract(*lower), m_extract(*last))) {
@@ -187,7 +154,7 @@ namespace va {
 			template <class... Args>
 			iterator emplace_common(Args&& ...args) {
 				m_data.emplace_back(std::forward<Args>(args)...);
-				auto upper = impl_upper_bound(begin(), std::prev(end()), m_extract(m_data.back()));
+				auto upper = detail::upper_bound(begin(), std::prev(end()), m_extract(m_data.back()), m_key_cmp, m_extract);
 				std::rotate(upper, std::prev(end()), end());
 				return upper;
 			}
@@ -211,13 +178,13 @@ namespace va {
 						return pos;
 					}
 					else {
-						auto upper = impl_upper_bound(begin(), std::prev(pos), m_extract(*last));
+						auto upper = detail::upper_bound(begin(), std::prev(pos), m_extract(*last), m_key_cmp, m_extract);
 						std::rotate(upper, last, end());
 						return upper;
 					}
 				}
 				else {
-					auto upper = impl_upper_bound(pos, last, m_extract(*last));
+					auto upper = detail::upper_bound(pos, last, m_extract(*last), m_key_cmp, m_extract);
 					std::rotate(upper, last, end());
 					return upper;
 				}
@@ -451,43 +418,43 @@ namespace va {
 			}
 
 			iterator lower_bound(const key_type& key) {
-				return impl_lower_bound(begin(), end(), key); 
+				return detail::lower_bound(begin(), end(), key, m_key_cmp, m_extract); 
 			}
 
 			const_iterator lower_bound(const key_type& key) const {
-				return impl_lower_bound(begin(), end(), key); 
+				return detail::lower_bound(begin(), end(), key, m_key_cmp, m_extract);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
 				lower_bound(const Key& key) {
-				return impl_lower_bound(begin(), end(), key);
+				return detail::lower_bound(begin(), end(), key, m_key_cmp, m_extract);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
 				lower_bound(const Key& key) const {
-				return impl_lower_bound(begin(), end(), key);
+				return detail::lower_bound(begin(), end(), key, m_key_cmp, m_extract);
 			}
 
 			iterator upper_bound(const key_type& key) {
-				return impl_upper_bound(begin(), end(), key); 
+				return detail::upper_bound(begin(), end(), key, m_key_cmp, m_extract); 
 			}
 
 			const_iterator upper_bound(const key_type& key) const {
-				return impl_upper_bound(begin(), end(), key);
+				return detail::upper_bound(begin(), end(), key, m_key_cmp, m_extract);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, iterator>
 				upper_bound(const Key& key) {
-				return impl_upper_bound(begin(), end(), key);
+				return detail::upper_bound(begin(), end(), key, m_key_cmp, m_extract);
 			}
 
 			template <class Key>
 			std::enable_if_t<is_transparent_v<Key, Compare>, const_iterator>
 				upper_bound(const Key& key) const {
-				return impl_upper_bound(begin(), end(), key);
+				return detail::upper_bound(begin(), end(), key, m_key_cmp, m_extract);
 			}
 
 			// observers

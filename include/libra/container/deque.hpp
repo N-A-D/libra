@@ -4,9 +4,9 @@
 #include <cassert>
 #include <stdexcept>
 #include <algorithm>
-#include "detail/type_traits.hpp"
+#include "../detail/iterator.hpp"
 
-namespace va {
+namespace libra {
 	namespace detail {
 		template <
 			class Deque,
@@ -889,7 +889,7 @@ namespace va {
 namespace std {
 
 	template <class T, class Allocator>
-	void swap(va::deque<T, Allocator>& lhs, va::deque<T, Allocator>& rhs)
+	void swap(libra::deque<T, Allocator>& lhs, libra::deque<T, Allocator>& rhs)
 		noexcept(noexcept(lhs.swap(rhs)))
 	{
 		lhs.swap(rhs);

@@ -6,10 +6,10 @@
 
 namespace libra {
 	namespace detail {
-		template <class RndIt> using diff_t = typename std::iterator_traits<RndIt>::difference_type;
+		template <class RndIt> using rnd_acc_diff_t = typename std::iterator_traits<RndIt>::difference_type;
 
 		template <class RndIt, class Compare>
-		constexpr void sift_up_heap(RndIt data, diff_t<RndIt> idx, Compare comp)
+		constexpr void sift_up_heap(RndIt data, rnd_acc_diff_t<RndIt> idx, Compare comp)
 		{
 			while (idx > 0 && comp(data[(idx - 1) / 2], data[idx])) {
 				std::swap(data[(idx - 1) / 2], data[idx]);
@@ -18,7 +18,7 @@ namespace libra {
 		}
 
 		template <class RndIt, class Compare>
-		constexpr void sift_down_heap(RndIt data, diff_t<RndIt> parent, diff_t<RndIt> len, Compare comp)
+		constexpr void sift_down_heap(RndIt data, rnd_acc_diff_t<RndIt> parent, rnd_acc_diff_t<RndIt> len, Compare comp)
 		{
 			while (2 * parent <= len) {
 				auto child = 2 * parent;
